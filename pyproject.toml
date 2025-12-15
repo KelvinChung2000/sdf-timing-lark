@@ -31,21 +31,25 @@ Homepage = "https://github.com/chipsalliance/python-sdf-timing"
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "yapf==0.24.0",
-    "tox",
+    "ruff",
+    "pre-commit",
 ]
 
 [tool.setuptools_scm]
-write_to = "sdf_timing/version.py"
+write_to = "src/sdf_timing/version.py"
 version_scheme = "post-release"
 
 [tool.setuptools.packages.find]
-include = ["sdf_timing*"]
+where = ["src"]
 
 [tool.setuptools.package-data]
 sdf_timing = ["*.lark"]
 
-[dependency-groups]
-dev = [
-    "pytest>=7.4.4",
-]
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.pytest.ini_options]
+addopts = "--doctest-modules --pyargs sdf_timing"

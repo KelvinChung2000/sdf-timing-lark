@@ -1,0 +1,15 @@
+(DELAYFILE
+    (SDFVERSION "3.0")
+    (TIMESCALE 1ps)
+
+    (CELL
+        (CELLTYPE "XOR2")
+        (INSTANCE top.x1)
+        (DELAY
+            (INCREMENT
+                (IOPATH i1 o1 (3.0:3.0:3.0)(3.0:3.0:3.0))
+                (IOPATH i2 o1 (3.0:3.0:3.0)(3.0:3.0:3.0))
+            )
+        )
+    )
+)

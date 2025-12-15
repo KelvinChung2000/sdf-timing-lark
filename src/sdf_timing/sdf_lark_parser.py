@@ -17,26 +17,27 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-import os
 from pathlib import Path
+
 from lark import Lark, LarkError
+
 from .sdf_transformers import SDFTransformer
 
 
 class SDFLarkParser:
     """Lark-based SDF parser that replaces the PLY implementation."""
-    
+
     def __init__(self):
         """Initialize the parser with the SDF grammar."""
         # Get the path to the grammar file
         grammar_path = Path(__file__).parent / "sdf.lark"
-        
+
         try:
             with open(grammar_path, 'r') as f:
                 grammar = f.read()
         except FileNotFoundError:
             raise FileNotFoundError(f"Grammar file not found: {grammar_path}")
-        
+
         # Create the Lark parser with LALR(1) algorithm for performance
         self.parser = Lark(
             grammar,
@@ -44,7 +45,7 @@ class SDFLarkParser:
             start='start',
             transformer=SDFTransformer()
         )
-    
+
     def parse(self, input_text):
         """
         Parse SDF input text and return the timing data structure.
@@ -62,14 +63,14 @@ class SDFLarkParser:
             # Parse the input and transform it using our transformer
             result = self.parser.parse(input_text)
             return result
-            
+
         except LarkError as e:
             # Preserve original Lark error with better context
             raise LarkError(f"SDF parsing failed at {getattr(e, 'line', 'unknown')}:{getattr(e, 'column', 'unknown')} - {str(e)}")
         except Exception as e:
             # Re-raise with context but preserve original exception type
             raise type(e)(f"Unexpected error during SDF parsing: {str(e)}") from e
-    
+
     def parse_file(self, filepath):
         """
         Parse an SDF file directly.
@@ -90,6 +91,7 @@ class SDFLarkParser:
 
 # Thread-local storage for parser instances to ensure thread safety
 import threading
+
 _local = threading.local()
 
 

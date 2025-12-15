@@ -1,0 +1,49 @@
+name: release-please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: google-github-actions/release-please-action@v4
+        id: release
+        with:
+          release-type: python
+
+      # The login logic depends on the specific pypi setup, usually trusted publishing or token
+      # For now, I'll add the build/publish steps conditional on release creation
+      - uses: actions/checkout@v4
+        if: ${{ steps.release.outputs.release_created }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        if: ${{ steps.release.outputs.release_created }}
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+
+      - name: Build
+        if: ${{ steps.release.outputs.release_created }}
+        run: |
+          python -m build
+
+      - name: Publish to PyPI
+        if: ${{ steps.release.outputs.release_created }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+        run: |
+          twine upload dist/*

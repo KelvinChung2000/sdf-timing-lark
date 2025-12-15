@@ -21,9 +21,7 @@
 import os
 import os.path
 
-
 from sdf_timing import sdfparse
-
 
 __path__ = os.path.dirname(__file__)
 

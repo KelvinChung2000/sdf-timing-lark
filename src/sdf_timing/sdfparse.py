@@ -40,22 +40,22 @@ def parse(input):
 
 def main():
     """Main entry point for command line usage."""
-    import sys
     import json
-    
+    import sys
+
     if len(sys.argv) != 2:
         print("Usage: sdf_timing_parse <sdf_file>")
         sys.exit(1)
-    
+
     sdf_file = sys.argv[1]
-    
+
     try:
         with open(sdf_file, 'r') as f:
             content = f.read()
-        
+
         result = parse(content)
         print(json.dumps(result, indent=2))
-        
+
     except Exception as e:
         print(f"Error parsing SDF file: {e}")
         sys.exit(1)

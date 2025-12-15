@@ -5,8 +5,6 @@ include *.md
 include AUTHORS
 include LICENSE
 
-include *.yapf
-include *.txt
-
+recursive-include src/sdf_timing *.py
 recursive-include tests *.py
 recursive-include tests *.sdf

@@ -31,4 +31,3 @@ From Wikipedia;
  * [SDF Parser written in C++](https://github.com/kmurray/libsdcparse) -
  * [Verilog To Routing](https://docs.verilogtorouting.org/en/latest/tutorials/timing_simulation/#post-imp-sdf) -
    Verilog to Routing can generate an SDF file for doing post implementation timing simulation.
-

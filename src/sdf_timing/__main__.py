@@ -19,8 +19,8 @@
 
 import argparse
 import json
-from .sdfparse import emit
-from .sdfparse import parse
+
+from .sdfparse import emit, parse
 
 
 def main():
