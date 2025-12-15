@@ -17,23 +17,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from . import sdflex
-from . import sdfyacc
 from . import sdfwrite
-
-
-def init():
-    sdfyacc.timings = dict()
-
-    sdfyacc.header = dict()
-    sdfyacc.delays_list = list()
-    sdfyacc.cells = dict()
-
-    sdfyacc.tmp_delay_list = list()
-    sdfyacc.tmp_equation = list()
-    sdfyacc.tmp_constr_list = list()
-
-    sdflex.lexer.lineno = 1
+from .sdf_lark_parser import parse_sdf
 
 
 def emit(input, timescale='1ps'):
@@ -41,7 +26,36 @@ def emit(input, timescale='1ps'):
 
 
 def parse(input):
-    init()
-    sdflex.input_data = input
-    sdfyacc.parser.parse(sdflex.input_data)
-    return sdfyacc.timings
+    """
+    Parse SDF input text using Lark parser.
+    
+    Args:
+        input (str): SDF content as string
+        
+    Returns:
+        dict: Parsed timing data structure
+    """
+    return parse_sdf(input)
+
+
+def main():
+    """Main entry point for command line usage."""
+    import sys
+    import json
+    
+    if len(sys.argv) != 2:
+        print("Usage: sdf_timing_parse <sdf_file>")
+        sys.exit(1)
+    
+    sdf_file = sys.argv[1]
+    
+    try:
+        with open(sdf_file, 'r') as f:
+            content = f.read()
+        
+        result = parse(content)
+        print(json.dumps(result, indent=2))
+        
+    except Exception as e:
+        print(f"Error parsing SDF file: {e}")
+        sys.exit(1)

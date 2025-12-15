@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=42", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sdf_timing"
+dynamic = ["version"]
+description = "Python library for working Standard Delay Format (SDF) Timing Annotation files."
+readme = "README.md"
+license = {text = "Apache-2.0"}
+authors = [
+    {name = "F4PGA Authors", email = "f4pga-wg@lists.chipsalliance.org"},
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+]
+requires-python = ">=3.7"
+dependencies = [
+    "lark",
+    "pyjson",
+]
+
+[project.scripts]
+sdf_timing_parse = "sdf_timing.sdfparse:main"
+
+[project.urls]
+Homepage = "https://github.com/chipsalliance/python-sdf-timing"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "yapf==0.24.0",
+    "tox",
+]
+
+[tool.setuptools_scm]
+write_to = "sdf_timing/version.py"
+version_scheme = "post-release"
+
+[tool.setuptools.packages.find]
+include = ["sdf_timing*"]
+
+[tool.setuptools.package-data]
+sdf_timing = ["*.lark"]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.4.4",
+]
