@@ -23,37 +23,37 @@ from sdf_timing import sdfparse
 
 datafiles_path = DATA_DIR
 goldenfiles_path = DATA_DIR / "golden"
-parsed_sdfs = list()
-generated_sdfs = list()
+
+
+def _parse_all_sdfs():
+    """Parse all SDF files in the data directory."""
+    files = sorted(datafiles_path.glob("*.sdf"))
+    return [sdfparse.parse(f.read_text()) for f in files]
 
 
 def test_parse() -> None:
-    files = sorted(datafiles_path.glob("*.sdf"))
-    for f in files:
-        with f.open("r") as sdffile:
-            parsed_sdfs.append(sdfparse.parse(sdffile.read()))
+    parsed_sdfs = _parse_all_sdfs()
+    assert len(parsed_sdfs) > 0
 
 
 def test_emit() -> None:
-    for s in parsed_sdfs:
-        generated_sdfs.append(sdfparse.emit(s))
+    parsed_sdfs = _parse_all_sdfs()
+    generated_sdfs = [sdfparse.emit(s) for s in parsed_sdfs]
+    assert len(generated_sdfs) == len(parsed_sdfs)
 
 
 def test_output_stability() -> None:
-    """Checks if the generated SDF are identical with golden files"""
+    """Checks if the generated SDF are identical with golden files."""
+    parsed_sdfs = _parse_all_sdfs()
+    golden_files = sorted(goldenfiles_path.glob("*.sdf"))
+    golden_contents = [f.read_text() for f in golden_files]
 
-    parsed_sdfs_check = list()
-    # read the golden files
-    files = sorted(goldenfiles_path.glob("*.sdf"))
-    for f in files:
-        with f.open("r") as sdffile:
-            parsed_sdfs_check.append(sdffile.read())
-
-    for s0, s1 in zip(parsed_sdfs, parsed_sdfs_check, strict=False):
-        sdf0 = sdfparse.emit(s0)
-        assert sdf0 == s1
+    for parsed, golden in zip(parsed_sdfs, golden_contents, strict=True):
+        assert sdfparse.emit(parsed) == golden
 
 
 def test_parse_generated() -> None:
+    parsed_sdfs = _parse_all_sdfs()
+    generated_sdfs = [sdfparse.emit(s) for s in parsed_sdfs]
     for s in generated_sdfs:
         sdfparse.parse(s)

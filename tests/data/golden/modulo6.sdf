@@ -1,6 +1,14 @@
 (DELAYFILE
-    (SDFVERSION "3.0")
-    (TIMESCALE 1ps)
+    (SDFVERSION "OVI 1.0")
+    (DESIGN "modulo6")
+    (DATE "Thu Sep 21 15:50:15 2017")
+    (VENDOR "PnomV1p50T025_STD_CELL_8HP_12T")
+    (PROGRAM "Synopsys Design Compiler cmos")
+    (VERSION "L-2016.03-SP5-5")
+    (DIVIDER /)
+    (VOLTAGE 1.5:1.5:1.5)
+    (TEMPERATURE 25:25:25)
+    (TIMESCALE 1ns)
 
     (CELL
         (CELLTYPE "DFFS_B")

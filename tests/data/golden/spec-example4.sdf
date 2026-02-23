@@ -1,6 +1,15 @@
 (DELAYFILE
     (SDFVERSION "3.0")
-    (TIMESCALE 1ps)
+    (DESIGN "testchip")
+    (DATE "Dec 17, 1991 14:49:48")
+    (VENDOR "Big Chips Inc.")
+    (PROGRAM "Chip Analyzer")
+    (VERSION "1.3b")
+    (DIVIDER .)
+    (VOLTAGE :3.8:)
+    (PROCESS "worst")
+    (TEMPERATURE :37:)
+    (TIMESCALE 10ps)
 
     (CELL
         (CELLTYPE "XOR")

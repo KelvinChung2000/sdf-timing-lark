@@ -1,6 +1,15 @@
 (DELAYFILE
-    (SDFVERSION "3.0")
-    (TIMESCALE 1ps)
+    (SDFVERSION "2.0")
+    (DESIGN "top")
+    (DATE "Nov 25, 1991 17:25:18")
+    (VENDOR "Slick Trick Systems")
+    (PROGRAM "Viability Tester")
+    (VERSION "v3.0")
+    (DIVIDER .)
+    (VOLTAGE :5:)
+    (PROCESS "typical")
+    (TEMPERATURE :25:)
+    (TIMESCALE 1ns)
 
     (CELL
         (CELLTYPE "XOR2")

@@ -36,6 +36,19 @@ def remove_quotation(s: str) -> str:
     return s.replace('"', "")
 
 
+def _format_values_triple(v: Values) -> str:
+    """Format a Values object as an SDF triple string (e.g. '5.5:5.0:4.5')."""
+    parts = []
+    for val in (v.min, v.avg, v.max):
+        if val is None:
+            parts.append("")
+        elif val == int(val):
+            parts.append(str(int(val)))
+        else:
+            parts.append(str(val))
+    return ":".join(parts)
+
+
 class SDFTransformer(Transformer):
     """Transformer that processes the SDF parse tree into data structures."""
 
@@ -112,12 +125,12 @@ class SDFTransformer(Transformer):
     @v_args(inline=True)
     def voltage(self, val: Values) -> dict[str, str]:
         """Process voltage specification."""
-        return {"voltage": str(val)}
+        return {"voltage": _format_values_triple(val)}
 
     @v_args(inline=True)
     def temperature(self, val: Values) -> dict[str, str]:
         """Process temperature specification."""
-        return {"temperature": str(val)}
+        return {"temperature": _format_values_triple(val)}
 
     @v_args(inline=True)
     def hierarchy_divider(self, val: Token) -> dict[str, str]:
@@ -125,9 +138,11 @@ class SDFTransformer(Transformer):
         return {"divider": str(val)}
 
     @v_args(inline=True)
-    def timescale(self, val: Token, unit: Token) -> dict[str, str]:
+    def timescale(self, val: float, unit: Token) -> dict[str, str]:
         """Process timescale specification."""
-        return {"timescale": str(val) + str(unit)}
+        int_val = int(val)
+        val_str = str(int_val) if val == int_val else str(val)
+        return {"timescale": val_str + str(unit)}
 
     # ── Value processing ─────────────────────────────────────────────
 
@@ -181,11 +196,12 @@ class SDFTransformer(Transformer):
     # ── Cell structure ───────────────────────────────────────────────
 
     @v_args(inline=True)
-    def cell(self, celltype: str, instance: str, delays: None = None) -> dict[str, str]:
+    def cell(self, celltype: str, instance: str | None, delays: None = None) -> dict[str, str]:
         """Process individual cell definition."""
-        self._add_cell(str(celltype), str(instance))
+        inst = str(instance) if instance is not None else ""
+        self._add_cell(str(celltype), inst)
         if delays is not None:
-            self._add_delays_to_cell(str(celltype), str(instance), self.delays_list)
+            self._add_delays_to_cell(str(celltype), inst, self.delays_list)
         self.delays_list = []
         return {}
 

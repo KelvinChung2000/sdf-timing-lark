@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 def emit(input: SDFFile, timescale: str = "1ps") -> str:  # noqa: A002
     """Emit SDF content from a parsed timing data structure."""
-    return sdfwrite.emit_sdf(input, timescale)
+    return sdfwrite.emit_sdf(input, timescale, header=input.header)
 
 
 def parse(input: str) -> SDFFile:  # noqa: A002

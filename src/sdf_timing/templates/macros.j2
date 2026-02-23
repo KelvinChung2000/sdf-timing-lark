@@ -2,7 +2,7 @@
     {%- if entry.min is none and entry.avg is none and entry.max is none -%}
         ()
     {%- else -%}
-        ({{ entry.min }}:{{ entry.avg }}:{{ entry.max }})
+        ({{ entry.min if entry.min is not none else '' }}:{{ entry.avg if entry.avg is not none else '' }}:{{ entry.max if entry.max is not none else '' }})
     {%- endif -%}
 {%- endmacro %}
 

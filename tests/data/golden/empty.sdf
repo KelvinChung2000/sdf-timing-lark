@@ -1,5 +1,5 @@
 (DELAYFILE
-    (SDFVERSION "3.0")
+    (SDFVERSION "1.2")
     (TIMESCALE 1ps)
 
 )

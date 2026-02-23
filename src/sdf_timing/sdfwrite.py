@@ -23,9 +23,12 @@ from typing import TYPE_CHECKING
 import jinja2
 
 if TYPE_CHECKING:
-    from sdf_timing.model import BaseEntry, SDFFile
+    from sdf_timing.model import BaseEntry, SDFFile, SDFHeader
 
-env = jinja2.Environment(loader=jinja2.PackageLoader("sdf_timing", "templates"))
+env = jinja2.Environment(
+    loader=jinja2.PackageLoader("sdf_timing", "templates"),
+    keep_trailing_newline=True,
+)
 
 
 def emit_timingenv_entries(delays: dict[str, BaseEntry]) -> str:
@@ -52,7 +55,10 @@ def emit_delay_entries(delays: dict[str, BaseEntry]) -> str:
 
 
 def emit_sdf(
-    timings: SDFFile, timescale: str = "1ps", uppercase_celltype: bool = False
+    timings: SDFFile,
+    timescale: str = "1ps",
+    uppercase_celltype: bool = False,
+    header: SDFHeader | None = None,
 ) -> str:
     prepared_cells: dict[str, dict[str, dict[str, str]]] = {}
     for cell_name, instances in timings.cells.items():
@@ -69,8 +75,7 @@ def emit_sdf(
         timescale=timescale,
         cells=prepared_cells,
         uppercase_celltype=uppercase_celltype,
+        header=header,
     )
 
-    # fix "None" entries
-    sdf = sdf.replace("None", "")
     return sdf

@@ -1,6 +1,15 @@
 (DELAYFILE
-    (SDFVERSION "3.0")
-    (TIMESCALE 1ps)
+    (SDFVERSION "2.0")
+    (DESIGN "top")
+    (DATE "Feb 21, 1992 11:30:10")
+    (VENDOR "Cool New Tools")
+    (PROGRAM "Delay Obfuscator")
+    (VERSION "v1.0")
+    (DIVIDER .)
+    (VOLTAGE :5:)
+    (PROCESS "typical")
+    (TEMPERATURE :25:)
+    (TIMESCALE 1ns)
 
     (CELL
         (CELLTYPE "CDS_GEN_FD_P_SD_RB_SB_NO")
