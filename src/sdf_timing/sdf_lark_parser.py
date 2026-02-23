@@ -37,7 +37,7 @@ class SDFLarkParser:
         """Parse SDF input text and return an SDFFile."""
         try:
             tree = self.parser.parse(input_text)
-            return SDFTransformer().transform(tree)  # type: ignore[return-value]
+            return SDFTransformer().transform(tree)
         except LarkError as e:
             raise LarkError(
                 f"SDF parsing failed at {getattr(e, 'line', 'unknown')}:"
