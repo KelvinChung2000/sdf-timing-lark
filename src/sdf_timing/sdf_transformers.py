@@ -54,14 +54,8 @@ class SDFTransformer(Transformer):
 
     def __init__(self) -> None:
         super().__init__()
-        self._reset_state()
-
-    def _reset_state(self) -> None:
-        """Reset transformer state for new parsing."""
         self.sdf_file_obj = SDFFile()
         self.delays_list: list[BaseEntry] = []
-        self.tmp_delay_list: list[BaseEntry] = []
-        self.tmp_constr_list: list[BaseEntry] = []
 
     # ── Top-level structure ──────────────────────────────────────────
 
@@ -358,21 +352,6 @@ class SDFTransformer(Transformer):
                 )
 
         raise ValueError(f"Invalid timing_port args: {args}")
-
-    @v_args(inline=True)
-    def port_check(self, port: PortSpec) -> TimingPortSpec:
-        """Process port check (dead code -- not in grammar)."""
-        return TimingPortSpec(
-            port=port["port"],
-            port_edge=port["port_edge"],
-            cond=False,
-            cond_equation=None,
-        )
-
-    @v_args(inline=True)
-    def cond_check(self, *_args: str | PortSpec) -> TimingPortSpec:
-        """Process conditional port check (dead code -- not in grammar)."""
-        return TimingPortSpec(port="", port_edge=None, cond=False, cond_equation=None)
 
     # ── Timing checks ────────────────────────────────────────────────
 
