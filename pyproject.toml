@@ -33,10 +33,10 @@ dev = [
     "pytest",
     "ruff",
     "pre-commit",
+    "pytest-cov",
 ]
 
 [tool.setuptools_scm]
-write_to = "src/sdf_timing/version.py"
 version_scheme = "post-release"
 
 [tool.setuptools.packages.find]
@@ -52,4 +52,4 @@ line-length = 88
 select = ["E", "F", "I", "W"]
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --pyargs sdf_timing"
+addopts = "--doctest-modules --pyargs sdf_timing --cov=sdf_timing --cov-report=term-missing"

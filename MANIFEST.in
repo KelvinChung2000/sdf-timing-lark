@@ -5,6 +5,10 @@ include *.md
 include AUTHORS
 include LICENSE
 
-recursive-include src/sdf_timing *.py
-recursive-include tests *.py
-recursive-include tests *.sdf
+graft src
+graft tests
+recursive-include src *.py
+recursive-include src *.sdf
+include *.yaml
+include *.lock
+global-exclude *.py[cod]
