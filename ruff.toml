@@ -98,20 +98,17 @@ select = [
   "ANN",
   "D",
   "DOC",
+  "N",
 ]
 
 
 # Future rules: Currently disabled, since it needs some more work.
 # - E501: Line too long -- Not automatically fixable
-# - N: flake8 Naming
 # - S: flake8 Bandit
 # - TD: flake8 TODOS
 # - FIX: flake8 fixme
 # - PL: pylint
 
-# Ignored rules:
-# - PYI063: https://docs.astral.sh/ruff/rules/pep484-style-positional-only-parameter/
-# - TRY003: https://docs.astral.sh/ruff/rules/raise-vanilla-args/
 ignore = ["TRY003"]
 
 
@@ -123,7 +120,7 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.per-file-ignores]
-"tests/*" = ["D", "ANN"]
+"tests/*" = ["D"]
 
 [lint.pydoclint]
 ignore-one-line-docstrings = true
