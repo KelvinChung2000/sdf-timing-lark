@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+"""Public API for parsing and emitting SDF timing files."""
 
 from __future__ import annotations
 

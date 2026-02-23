@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+"""SDF file writer using Jinja2 templates."""
 
 from __future__ import annotations
 
@@ -32,18 +33,21 @@ env = jinja2.Environment(
 
 
 def emit_timingenv_entries(delays: dict[str, BaseEntry]) -> str:
+    """Render timing environment entries to SDF text."""
     entries = [delays[k] for k in sorted(delays) if delays[k].is_timing_env]
     template = env.get_template("timingenv.j2")
     return template.render(entries=entries)
 
 
 def emit_timingcheck_entries(delays: dict[str, BaseEntry]) -> str:
+    """Render timing check entries to SDF text."""
     entries = [delays[k] for k in sorted(delays) if delays[k].is_timing_check]
     template = env.get_template("timingcheck.j2")
     return template.render(entries=entries)
 
 
 def emit_delay_entries(delays: dict[str, BaseEntry]) -> str:
+    """Render absolute and incremental delay entries to SDF text."""
     sorted_delays = [delays[k] for k in sorted(delays)]
     absolute_entries = [d for d in sorted_delays if d.is_absolute]
     incremental_entries = [d for d in sorted_delays if d.is_incremental]
@@ -60,6 +64,7 @@ def emit_sdf(
     uppercase_celltype: bool = False,
     header: SDFHeader | None = None,
 ) -> str:
+    """Render a complete SDF file from parsed timing data."""
     prepared_cells: dict[str, dict[str, dict[str, str]]] = {}
     for cell_name, instances in timings.cells.items():
         prepared_cells[cell_name] = {}
@@ -71,11 +76,9 @@ def emit_sdf(
             }
 
     template = env.get_template("sdf.j2")
-    sdf = template.render(
+    return template.render(
         timescale=timescale,
         cells=prepared_cells,
         uppercase_celltype=uppercase_celltype,
         header=header,
     )
-
-    return sdf

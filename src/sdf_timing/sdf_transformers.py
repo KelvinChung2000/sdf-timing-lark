@@ -190,7 +190,12 @@ class SDFTransformer(Transformer):
     # ── Cell structure ───────────────────────────────────────────────
 
     @v_args(inline=True)
-    def cell(self, celltype: str, instance: str | None, delays: None = None) -> dict[str, str]:
+    def cell(
+        self,
+        celltype: str,
+        instance: str | None,
+        delays: None = None,
+    ) -> dict[str, str]:
         """Process individual cell definition."""
         inst = str(instance) if instance is not None else ""
         self._add_cell(str(celltype), inst)
@@ -512,22 +517,22 @@ class SDFTransformer(Transformer):
     # ── Terminal values ──────────────────────────────────────────────
 
     @v_args(inline=True)
-    def STRING(self, value: Token) -> str:
+    def STRING(self, value: Token) -> str:  # noqa: N802
         """Convert STRING token to str."""
         return str(value)
 
     @v_args(inline=True)
-    def FLOAT(self, value: Token) -> float:
+    def FLOAT(self, value: Token) -> float:  # noqa: N802
         """Convert FLOAT token to float."""
         return float(value)
 
     @v_args(inline=True)
-    def QSTRING(self, value: Token) -> str:
+    def QSTRING(self, value: Token) -> str:  # noqa: N802
         """Convert QSTRING token to str."""
         return str(value)
 
     @v_args(inline=True)
-    def QFLOAT(self, value: Token) -> str:
+    def QFLOAT(self, value: Token) -> str:  # noqa: N802
         """Convert QFLOAT token to str."""
         return str(value)
 

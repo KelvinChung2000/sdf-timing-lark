@@ -1,3 +1,5 @@
+"""Lark-based SDF file parser with thread-safe caching."""
+
 from __future__ import annotations
 
 import threading
