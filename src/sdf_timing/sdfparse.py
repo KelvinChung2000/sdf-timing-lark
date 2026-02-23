@@ -37,18 +37,7 @@ def emit(input: SDFFile, timescale: str = "1ps") -> str:  # noqa: A002
 
 
 def parse(input: str) -> SDFFile:  # noqa: A002
-    """Parse SDF input text using Lark parser.
-
-    Parameters
-    ----------
-    input : str
-        SDF content as string.
-
-    Returns
-    -------
-    SDFFile
-        Parsed timing data structure.
-    """
+    """Parse SDF input text and return an SDFFile."""
     return parse_sdf(input)
 
 
@@ -61,12 +50,9 @@ def main() -> None:
     sdf_file = sys.argv[1]
 
     try:
-        with Path(sdf_file).open("r") as f:
-            content = f.read()
-
+        content = Path(sdf_file).read_text()
         result = parse(content)
         print(json.dumps(result.to_dict(), indent=2))  # noqa: T201
-
     except Exception as e:  # noqa: BLE001
         print(f"Error parsing SDF file: {e}")  # noqa: T201
         sys.exit(1)

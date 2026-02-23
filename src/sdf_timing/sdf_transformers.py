@@ -36,17 +36,18 @@ def remove_quotation(s: str) -> str:
     return s.replace('"', "")
 
 
+def _format_value(val: float | None) -> str:
+    """Format a single timing value, using integer form when possible."""
+    if val is None:
+        return ""
+    if val == int(val):
+        return str(int(val))
+    return str(val)
+
+
 def _format_values_triple(v: Values) -> str:
     """Format a Values object as an SDF triple string (e.g. '5.5:5.0:4.5')."""
-    parts = []
-    for val in (v.min, v.avg, v.max):
-        if val is None:
-            parts.append("")
-        elif val == int(val):
-            parts.append(str(int(val)))
-        else:
-            parts.append(str(val))
-    return ":".join(parts)
+    return ":".join(_format_value(val) for val in (v.min, v.avg, v.max))
 
 
 class SDFTransformer(Transformer):
@@ -143,20 +144,14 @@ class SDFTransformer(Transformer):
     @v_args(inline=True)
     def rvalue(self, *args: float | Values | Token | None) -> Values:
         """Process single value or real triple."""
-        item: float | Values | None = None
         for arg in args:
-            if isinstance(arg, (float, Values)):
-                item = arg
-                break
+            if isinstance(arg, Values):
+                return arg
+            if isinstance(arg, float):
+                return Values(min=None, avg=arg, max=None)
             if isinstance(arg, Token) and arg.type == "FLOAT":
-                item = float(arg)
-                break
-
-        if item is None:
-            return Values(min=None, avg=None, max=None)
-        if isinstance(item, Values):
-            return item
-        return Values(min=None, avg=float(item), max=None)
+                return Values(min=None, avg=float(arg), max=None)
+        return Values()
 
     @v_args(inline=True)
     def real_triple(self, min_val: Token, avg_val: Token, max_val: Token) -> Values:
@@ -170,22 +165,17 @@ class SDFTransformer(Transformer):
     @v_args(inline=True)
     def delval_list(self, *items: Values | None) -> DelayPaths:
         """Process delay value list (1, 2, or 3 real triples)."""
-        paths = DelayPaths()
-        valid_items: list[Values] = [item for item in items if isinstance(item, Values)]
+        valid_items = [item for item in items if isinstance(item, Values)]
 
         if len(valid_items) == 1:
-            paths.nominal = valid_items[0]
-        elif len(valid_items) == 2:
-            paths.fast = valid_items[0]
-            paths.slow = valid_items[1]
-        elif len(valid_items) == 3:
-            paths.fast = valid_items[0]
-            paths.nominal = valid_items[1]
-            paths.slow = valid_items[2]
-        else:
-            paths.nominal = Values(min=None, avg=None, max=None)
-
-        return paths
+            return DelayPaths(nominal=valid_items[0])
+        if len(valid_items) == 2:
+            return DelayPaths(fast=valid_items[0], slow=valid_items[1])
+        if len(valid_items) == 3:
+            return DelayPaths(
+                fast=valid_items[0], nominal=valid_items[1], slow=valid_items[2]
+            )
+        return DelayPaths(nominal=Values())
 
     # ── Cell structure ───────────────────────────────────────────────
 
@@ -214,8 +204,6 @@ class SDFTransformer(Transformer):
         """Process instance name."""
         if val is None:
             return None
-        if val == "*":
-            return "*"
         return str(val)
 
     # ── Delay blocks ─────────────────────────────────────────────────
@@ -323,7 +311,7 @@ class SDFTransformer(Transformer):
 
     @v_args(inline=True)
     def timing_port(self, *args: PortSpec | str | list[str]) -> TimingPortSpec:
-        """Process timing port."""
+        """Process timing port with optional condition."""
         if len(args) == 1:
             port_spec = args[0]
             if isinstance(port_spec, dict):
@@ -334,16 +322,11 @@ class SDFTransformer(Transformer):
                     cond_equation=None,
                 )
             return TimingPortSpec(
-                port=str(port_spec),
-                port_edge=None,
-                cond=False,
-                cond_equation=None,
+                port=str(port_spec), port_edge=None, cond=False, cond_equation=None
             )
 
         if len(args) == 2:
-            condition = args[0]
-            port_spec = args[1]
-
+            condition, port_spec = args
             if isinstance(port_spec, dict):
                 if isinstance(condition, list):
                     cond_eq = " ".join(str(x) for x in condition)
@@ -499,10 +482,7 @@ class SDFTransformer(Transformer):
 
     def _add_cell(self, name: str, instance: str) -> None:
         """Add cell to cells dictionary."""
-        if name not in self.sdf_file_obj.cells:
-            self.sdf_file_obj.cells[name] = {}
-        if instance not in self.sdf_file_obj.cells[name]:
-            self.sdf_file_obj.cells[name][instance] = {}
+        self.sdf_file_obj.cells.setdefault(name, {}).setdefault(instance, {})
 
     def _add_delays_to_cell(
         self,

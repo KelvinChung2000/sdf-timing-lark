@@ -46,7 +46,7 @@ class TestParseFile:
 
     def test_parse_with_comments(self):
         """SDF files with // comments should parse successfully."""
-        sdf_with_comments = '''(DELAYFILE
+        sdf_with_comments = """(DELAYFILE
             // This is a comment
             (SDFVERSION "3.0")
             (TIMESCALE 1ps)
@@ -60,7 +60,7 @@ class TestParseFile:
                     )
                 )
             )
-        )'''
+        )"""
         result = SDFLarkParser().parse(sdf_with_comments)
         assert len(result.cells) == 1
         assert "BUF" in result.cells

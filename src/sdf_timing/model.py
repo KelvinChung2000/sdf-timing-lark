@@ -288,14 +288,13 @@ class SDFFile:
 
     def to_dict(self) -> dict[str, Any]:
         """Return the full SDF structure as a nested dictionary."""
-        cells_dict: dict[str, dict[str, dict[str, Any]]] = {}
-        for cell_type, instances in self.cells.items():
-            cells_dict[cell_type] = {}
-            for instance_name, entries in instances.items():
-                cells_dict[cell_type][instance_name] = {}
-                for entry_name, entry in entries.items():
-                    cells_dict[cell_type][instance_name][entry_name] = entry.to_dict()
-
+        cells_dict = {
+            cell_type: {
+                inst: {name: entry.to_dict() for name, entry in entries.items()}
+                for inst, entries in instances.items()
+            }
+            for cell_type, instances in self.cells.items()
+        }
         return {"header": self.header.to_dict(), "cells": cells_dict}
 
     def __getitem__(self, key: str) -> SDFFileValue:
@@ -312,8 +311,7 @@ class SDFFile:
 
     def get(self, key: str, default: SDFFileValue | None = None) -> SDFFileValue | None:
         """Return header or cells by key, with optional default."""
-        if key == "header":
-            return self.header
-        if key == "cells":
-            return self.cells
-        return default
+        try:
+            return self[key]
+        except KeyError:
+            return default

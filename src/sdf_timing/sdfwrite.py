@@ -65,15 +65,17 @@ def emit_sdf(
     header: SDFHeader | None = None,
 ) -> str:
     """Render a complete SDF file from parsed timing data."""
-    prepared_cells: dict[str, dict[str, dict[str, str]]] = {}
-    for cell_name, instances in timings.cells.items():
-        prepared_cells[cell_name] = {}
-        for instance_name, delays in instances.items():
-            prepared_cells[cell_name][instance_name] = {
+    prepared_cells = {
+        cell_name: {
+            instance_name: {
                 "delay_entries": emit_delay_entries(delays),
                 "timingcheck_entries": emit_timingcheck_entries(delays),
                 "timingenv_entries": emit_timingenv_entries(delays),
             }
+            for instance_name, delays in instances.items()
+        }
+        for cell_name, instances in timings.cells.items()
+    }
 
     template = env.get_template("sdf.j2")
     return template.render(

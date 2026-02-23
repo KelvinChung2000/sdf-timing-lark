@@ -20,14 +20,14 @@
 from conftest import DATA_DIR
 
 from sdf_timing import sdfparse
+from sdf_timing.model import SDFFile
 
-datafiles_path = DATA_DIR
-goldenfiles_path = DATA_DIR / "golden"
+GOLDEN_DIR = DATA_DIR / "golden"
 
 
-def _parse_all_sdfs():
+def _parse_all_sdfs() -> list[SDFFile]:
     """Parse all SDF files in the data directory."""
-    files = sorted(datafiles_path.glob("*.sdf"))
+    files = sorted(DATA_DIR.glob("*.sdf"))
     return [sdfparse.parse(f.read_text()) for f in files]
 
 
@@ -45,7 +45,7 @@ def test_emit() -> None:
 def test_output_stability() -> None:
     """Checks if the generated SDF are identical with golden files."""
     parsed_sdfs = _parse_all_sdfs()
-    golden_files = sorted(goldenfiles_path.glob("*.sdf"))
+    golden_files = sorted(GOLDEN_DIR.glob("*.sdf"))
     golden_contents = [f.read_text() for f in golden_files]
 
     for parsed, golden in zip(parsed_sdfs, golden_contents, strict=True):
