@@ -17,14 +17,12 @@
 # SPDX-License-Identifier: Apache-2.0
 
 
-from pathlib import Path
+from conftest import DATA_DIR
 
 from sdf_timing import sdfparse
 
-__path__ = Path(__file__).parent
-
-datafiles_path = __path__ / "data"
-goldenfiles_path = __path__ / "data" / "golden"
+datafiles_path = DATA_DIR
+goldenfiles_path = DATA_DIR / "golden"
 parsed_sdfs = list()
 generated_sdfs = list()
 
@@ -42,7 +40,7 @@ def test_emit() -> None:
 
 
 def test_output_stability() -> None:
-    """ Checks if the generated SDF are identical with golden files"""
+    """Checks if the generated SDF are identical with golden files"""
 
     parsed_sdfs_check = list()
     # read the golden files

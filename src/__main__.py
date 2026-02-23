@@ -16,6 +16,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+from __future__ import annotations
+
 import argparse
 import json
 from pathlib import Path
@@ -23,10 +25,14 @@ from pathlib import Path
 from sdf_timing.sdfparse import emit, parse
 
 
-def main():
+def main() -> None:
+    """CLI entry point for SDF timing parse and emit."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--emit", action="store_const", const=True,
-                        help="When set SDF file will be generated from JSON.")
+    parser.add_argument(
+        "--emit",
+        action="store_true",
+        help="When set SDF file will be generated from JSON.",
+    )
     parser.add_argument("--sdf", type=str, help="Path to SDF file")
     parser.add_argument("--json", type=str, help="Path to JSON file")
 
@@ -34,15 +40,16 @@ def main():
 
     if args.emit:
         with Path(args.json).open("r") as fp:
-            input = json.loads(fp.read())
-            timings = emit(input)
-            Path(args.sdf).open("w").write(timings)
+            data = json.loads(fp.read())
+        timings = emit(data)
+        with Path(args.sdf).open("w") as fp:
+            fp.write(timings)
     else:
         with Path(args.sdf).open("r") as fp:
             timings = parse(fp.read())
 
         with Path(args.json).open("w") as fp:
-            json.dump(timings, fp, indent=4, sort_keys=True)
+            json.dump(timings.to_dict(), fp, indent=4, sort_keys=True)
 
 
 if __name__ == "__main__":

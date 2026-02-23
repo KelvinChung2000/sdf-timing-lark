@@ -16,10 +16,10 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Operating System :: OS Independent",
 ]
-requires-python = ">=3.7"
+requires-python = ">=3.11"
 dependencies = [
     "lark",
-    "pyjson",
+    "jinja2",
 ]
 
 [project.scripts]
@@ -34,6 +34,7 @@ dev = [
     "ruff",
     "pre-commit",
     "pytest-cov",
+    "ty",
 ]
 
 [tool.setuptools_scm]
@@ -43,13 +44,24 @@ version_scheme = "post-release"
 where = ["src"]
 
 [tool.setuptools.package-data]
-sdf_timing = ["*.lark"]
-
-[tool.ruff]
-line-length = 88
-
-[tool.ruff.lint]
-select = ["E", "F", "I", "W"]
+sdf_timing = ["*.lark", "templates/*.j2"]
 
 [tool.pytest.ini_options]
-addopts = "--doctest-modules --pyargs sdf_timing --cov=sdf_timing --cov-report=term-missing"
+testpaths = ["tests", "src"]
+python_files = ["test_*.py", "*_test.py"]
+addopts = [
+    "--doctest-modules",
+    "--cov=sdf_timing",
+    "--cov-report=term-missing",
+]
+
+[dependency-groups]
+dev = [
+    "ty>=0.0.18",
+]
+
+[tool.ty.environment]
+python-version = "3.11"
+
+[tool.ty.src]
+include = ["src/", "tests/"]

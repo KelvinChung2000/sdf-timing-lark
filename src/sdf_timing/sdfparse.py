@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from pathlib import Path
-
 #
 # Copyright 2020-2022 F4PGA Authors
 #
@@ -17,35 +15,46 @@ from pathlib import Path
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+from typing import TYPE_CHECKING
+
 from . import sdfwrite
 from .sdf_lark_parser import parse_sdf
 
+if TYPE_CHECKING:
+    from .model import SDFFile
 
-def emit(input: dict, timescale: str = "1ps") -> str:
+
+def emit(input: SDFFile, timescale: str = "1ps") -> str:  # noqa: A002
+    """Emit SDF content from a parsed timing data structure."""
     return sdfwrite.emit_sdf(input, timescale)
 
 
-def parse(input: str) -> dict:
-    """
-    Parse SDF input text using Lark parser.
+def parse(input: str) -> SDFFile:  # noqa: A002
+    """Parse SDF input text using Lark parser.
 
-    Args:
-        input (str): SDF content as string
+    Parameters
+    ----------
+    input : str
+        SDF content as string.
 
     Returns
     -------
-        dict: Parsed timing data structure
+    SDFFile
+        Parsed timing data structure.
     """
     return parse_sdf(input)
 
 
-def main():
-    """Main entry point for command line usage."""
-    import json
-    import sys
-
+def main() -> None:
+    """Run the command line SDF parser."""
     if len(sys.argv) != 2:
-        print("Usage: sdf_timing_parse <sdf_file>")
+        print("Usage: sdf_timing_parse <sdf_file>")  # noqa: T201
         sys.exit(1)
 
     sdf_file = sys.argv[1]
@@ -55,8 +64,8 @@ def main():
             content = f.read()
 
         result = parse(content)
-        print(json.dumps(result, indent=2))
+        print(json.dumps(result.to_dict(), indent=2))  # noqa: T201
 
-    except Exception as e:
-        print(f"Error parsing SDF file: {e}")
+    except Exception as e:  # noqa: BLE001
+        print(f"Error parsing SDF file: {e}")  # noqa: T201
         sys.exit(1)

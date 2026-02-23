@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 import threading
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from lark import Lark, LarkError
 
 from .sdf_transformers import SDFTransformer
+
+if TYPE_CHECKING:
+    from .model import SDFFile
 
 
 class SDFLarkParser:
@@ -15,63 +21,63 @@ class SDFLarkParser:
         grammar_path = Path(__file__).parent / "sdf.lark"
 
         try:
-            with open(grammar_path) as f:
+            with grammar_path.open() as f:
                 grammar = f.read()
-        except FileNotFoundError:
-            raise FileNotFoundError(f"Grammar file not found: {grammar_path}")
+        except FileNotFoundError as exc:
+            raise FileNotFoundError(f"Grammar file not found: {grammar_path}") from exc
 
         # Create the Lark parser with LALR(1) algorithm for performance
         self.parser = Lark(
             grammar, parser="lalr", start="start", transformer=SDFTransformer()
         )
 
-    def parse(self, input_text: str) -> object:
-        """
-        Parse SDF input text and return the timing data structure.
+    def parse(self, input_text: str) -> SDFFile:
+        """Parse SDF input text and return the timing data structure.
 
-        Args:
-            input_text (str): The SDF file content as a string
+        Parameters
+        ----------
+        input_text : str
+            The SDF file content as a string.
 
         Returns
         -------
-            SDFFile: Parsed timing data object
+        SDFFile
+            Parsed timing data structure.
 
         Raises
         ------
-            LarkError: If parsing fails
+        LarkError
+            If parsing fails.
         """
         try:
-            # Parse the input and transform it using our transformer
-            result = self.parser.parse(input_text)
-            return result
-
+            return self.parser.parse(input_text)  # type: ignore[return-value]
         except LarkError as e:
-            # Preserve original Lark error with better context
             raise LarkError(
                 f"SDF parsing failed at {getattr(e, 'line', 'unknown')}:"
-                f"{getattr(e, 'column', 'unknown')} - {str(e)}"
-            )
+                f"{getattr(e, 'column', 'unknown')} - {e!s}"
+            ) from e
         except Exception as e:
-            # Re-raise with context but preserve original exception type
-            raise type(e)(f"Unexpected error during SDF parsing: {str(e)}") from e
+            raise type(e)(f"Unexpected error during SDF parsing: {e!s}") from e
 
-    def parse_file(self, filepath: Path | str) -> object:
-        """
-        Parse an SDF file directly.
+    def parse_file(self, filepath: Path | str) -> SDFFile:
+        """Parse an SDF file directly.
 
-        Args:
-            filepath (str): Path to the SDF file
+        Parameters
+        ----------
+        filepath : Path | str
+            Path to the SDF file.
 
         Returns
         -------
-            SDFFile: Parsed timing data object
+        SDFFile
+            Parsed timing data structure.
         """
         try:
             with Path(filepath).open("r") as f:
                 content = f.read()
             return self.parse(content)
         except OSError as e:
-            raise Exception(f"Error reading SDF file {filepath}: {str(e)}")
+            raise OSError(f"Error reading SDF file {filepath}: {e!s}") from e
 
 
 # Thread-local storage for parser instances to ensure thread safety
@@ -86,34 +92,37 @@ def get_parser() -> SDFLarkParser:
     return _local.parser
 
 
-def parse_sdf(input_text: str) -> object:
-    """
-    Parse SDF text using the Lark parser.
+def parse_sdf(input_text: str) -> SDFFile:
+    """Parse SDF text using the Lark parser.
 
     This function provides the same interface as the original PLY-based parser.
 
-    Args:
-        input_text (str): SDF content as string
+    Parameters
+    ----------
+    input_text : str
+        SDF content as string.
 
     Returns
     -------
-        SDFFile: Parsed timing data structure
+    SDFFile
+        Parsed timing data structure.
     """
-    # Create a fresh parser instance to avoid state contamination
     parser = SDFLarkParser()
     return parser.parse(input_text)
 
 
-def parse_sdf_file(filepath: Path | str) -> object:
-    """
-    Parse an SDF file using the Lark parser.
+def parse_sdf_file(filepath: Path | str) -> SDFFile:
+    """Parse an SDF file using the Lark parser.
 
-    Args:
-        filepath (str): Path to SDF file
+    Parameters
+    ----------
+    filepath : Path | str
+        Path to SDF file.
 
     Returns
     -------
-        SDFFile: Parsed timing data structure
+    SDFFile
+        Parsed timing data structure.
     """
     parser = get_parser()
     return parser.parse_file(filepath)

@@ -16,18 +16,38 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+"""Utility functions for creating SDF timing entries."""
+
+from __future__ import annotations
+
 import re
-from typing import Optional, Dict, Any, Union
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import builtins
 
 from .model import (
-    Port, Interconnect, Iopath, Device,
-    Setup, Hold, Removal, Recovery, Width, SetupHold,
-    PathConstraint, BaseEntry
+    DelayPaths,
+    Device,
+    EntryType,
+    Hold,
+    Interconnect,
+    Iopath,
+    PathConstraint,
+    Port,
+    PortSpec,
+    Recovery,
+    Removal,
+    Setup,
+    SetupHold,
+    TimingCheck,
+    TimingPortSpec,
+    Width,
 )
 
 
 def get_scale_fs(timescale: str) -> int:
-    """Convert sdf timescale to scale factor to femtoseconds as int
+    """Convert sdf timescale to scale factor to femtoseconds as int.
 
     >>> get_scale_fs('1.0 fs')
     1
@@ -70,7 +90,7 @@ def get_scale_fs(timescale: str) -> int:
 
 
 def get_scale_seconds(timescale: str) -> float:
-    """Convert sdf timescale to scale factor to floating point seconds
+    """Convert sdf timescale to scale factor to floating point seconds.
 
     >>> get_scale_seconds('1.0 fs')
     1e-15
@@ -93,107 +113,123 @@ def get_scale_seconds(timescale: str) -> float:
     return 1e-15 * get_scale_fs(timescale)
 
 
-def add_port(portname: dict, paths: Any) -> Port:
-    name = "port_" + portname["port"]
+def add_port(portname: PortSpec, paths: DelayPaths) -> Port:
+    """Create a Port entry."""
+    port_name = portname["port"]
     return Port(
-        name=name,
-        from_pin=portname["port"],
-        to_pin=portname["port"],
+        name=f"port_{port_name}",
+        from_pin=port_name,
+        to_pin=port_name,
         delay_paths=paths,
     )
 
 
-def add_interconnect(pfrom: dict, pto: dict, paths: Any) -> Interconnect:
-    name = "interconnect_"
-    name += pfrom["port"] + "_" + pto["port"]
+def add_interconnect(
+    pfrom: PortSpec,
+    pto: PortSpec,
+    paths: DelayPaths,
+) -> Interconnect:
+    """Create an Interconnect entry."""
+    from_port = pfrom["port"]
+    to_port = pto["port"]
     return Interconnect(
-        name=name,
-        from_pin=pfrom["port"],
-        to_pin=pto["port"],
+        name=f"interconnect_{from_port}_{to_port}",
+        from_pin=from_port,
+        to_pin=to_port,
         from_pin_edge=pfrom["port_edge"],
         to_pin_edge=pto["port_edge"],
         delay_paths=paths,
     )
 
 
-def add_iopath(pfrom: dict, pto: dict, paths: Any) -> Iopath:
-    name = "iopath_"
-    name += pfrom["port"] + "_" + pto["port"]
+def add_iopath(
+    pfrom: PortSpec,
+    pto: PortSpec,
+    paths: DelayPaths,
+) -> Iopath:
+    """Create an Iopath entry."""
+    from_port = pfrom["port"]
+    to_port = pto["port"]
     return Iopath(
-        name=name,
-        from_pin=pfrom["port"],
-        to_pin=pto["port"],
+        name=f"iopath_{from_port}_{to_port}",
+        from_pin=from_port,
+        to_pin=to_port,
         from_pin_edge=pfrom["port_edge"],
         to_pin_edge=pto["port_edge"],
         delay_paths=paths,
     )
 
 
-def add_device(port: dict, paths: Any) -> Device:
-    name = "device_"
-    name += port["port"]
+def add_device(port: PortSpec, paths: DelayPaths) -> Device:
+    """Create a Device entry."""
+    port_name = port["port"]
     return Device(
-        name=name,
-        from_pin=port["port"],
-        to_pin=port["port"],
+        name=f"device_{port_name}",
+        from_pin=port_name,
+        to_pin=port_name,
         delay_paths=paths,
     )
 
 
-def add_tcheck(type: str, pto: dict, pfrom: dict, paths: Any) -> BaseEntry:
-    name = type + "_"
-    name += pfrom["port"] + "_" + pto["port"]
-    
-    kwargs = {
-        "name": name,
-        "is_timing_check": True,
-        "is_cond": pfrom.get("cond", False),
-        "cond_equation": pfrom.get("cond_equation"),
-        "from_pin": pfrom["port"],
-        "to_pin": pto["port"],
-        "from_pin_edge": pfrom["port_edge"],
-        "to_pin_edge": pto["port_edge"],
-        "delay_paths": paths,
+def add_tcheck(
+    check_type: EntryType,
+    pto: TimingPortSpec,
+    pfrom: TimingPortSpec,
+    paths: DelayPaths,
+) -> TimingCheck:
+    """Create a timing check entry."""
+    from_port = pfrom["port"]
+    to_port = pto["port"]
+    name = f"{check_type}_{from_port}_{to_port}"
+    is_cond = pfrom["cond"]
+    cond_equation = pfrom["cond_equation"]
+
+    check_classes: dict[EntryType, builtins.type[TimingCheck]] = {
+        EntryType.SETUP: Setup,
+        EntryType.HOLD: Hold,
+        EntryType.REMOVAL: Removal,
+        EntryType.RECOVERY: Recovery,
+        EntryType.WIDTH: Width,
+        EntryType.SETUPHOLD: SetupHold,
     }
 
-    if type == "setup":
-        return Setup(**kwargs)
-    elif type == "hold":
-        return Hold(**kwargs)
-    elif type == "removal":
-        return Removal(**kwargs)
-    elif type == "recovery":
-        return Recovery(**kwargs)
-    elif type == "width":
-        # width check usually has only one port, but here it's reused
-        # items[1] is ported to pto and pfrom in transformer
-        return Width(**kwargs)
-    elif type == "setuphold":
-        return SetupHold(**kwargs)
-    else:
-        # Fallback
-        entry = BaseEntry(**kwargs)
-        entry.type = type
-        return entry
+    cls = check_classes.get(check_type)
+    if cls is None:
+        raise ValueError(f"Unknown timing check type: {check_type}")
+
+    return cls(
+        name=name,
+        is_timing_check=True,
+        is_cond=is_cond,
+        cond_equation=cond_equation,
+        from_pin=from_port,
+        to_pin=to_port,
+        from_pin_edge=pfrom["port_edge"],
+        to_pin_edge=pto["port_edge"],
+        delay_paths=paths,
+    )
 
 
-def add_constraint(type: str, pto: dict, pfrom: dict, paths: Any) -> BaseEntry:
-    name = type + "_"
-    name += pfrom["port"] + "_" + pto["port"]
-    
-    kwargs = {
-        "name": name,
-        "is_timing_env": True,
-        "from_pin": pfrom["port"],
-        "to_pin": pto["port"],
-        "from_pin_edge": pfrom["port_edge"],
-        "to_pin_edge": pto["port_edge"],
-        "delay_paths": paths,
-    }
-    
-    if type == "pathconstraint":
-        return PathConstraint(**kwargs)
-    else:
-        entry = BaseEntry(**kwargs)
-        entry.type = type
-        return entry
+def add_constraint(
+    constraint_type: EntryType,
+    pto: PortSpec,
+    pfrom: PortSpec,
+    paths: DelayPaths,
+) -> PathConstraint:
+    """Create a constraint entry."""
+    from_port = pfrom["port"]
+    to_port = pto["port"]
+    name = f"{constraint_type}_{from_port}_{to_port}"
+
+    if constraint_type != EntryType.PATHCONSTRAINT:
+        raise ValueError(f"Unknown constraint type: {constraint_type}")
+
+    return PathConstraint(
+        name=name,
+        is_timing_env=True,
+        from_pin=from_port,
+        to_pin=to_port,
+        from_pin_edge=pfrom["port_edge"],
+        to_pin_edge=pto["port_edge"],
+        delay_paths=paths,
+    )
