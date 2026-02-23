@@ -9,6 +9,7 @@ graft src
 graft tests
 recursive-include src *.py
 recursive-include src *.sdf
+recursive-include src *.lark
+recursive-include src *.j2
 include *.yaml
-include *.lock
 global-exclude *.py[cod]

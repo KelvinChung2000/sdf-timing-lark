@@ -33,8 +33,8 @@ exclude = [
 line-length = 88
 indent-width = 4
 
-# Assume Python 3.12
-target-version = "py312"
+# Assume Python 3.11
+target-version = "py311"
 
 [lint]
 # Rules: https://docs.astral.sh/ruff/rules
@@ -44,7 +44,7 @@ target-version = "py312"
 # - I: Isort
 # - RET: flake8 Return
 # - B: flake8 Bugbear
-# - T10: flake8 Debuuger
+# - T10: flake8 Debugger
 # - FA: flake8 future annotations
 # - INT: flake8 gettext
 # - ICN: flake8 import conventions
@@ -55,12 +55,11 @@ target-version = "py312"
 # - PYI: flake8 pyi
 # - PT: flake8 pytest
 # - RSE: flake8 raise
-# - RET: flake8 return
 # - SLF: flake8 self
 # - TID: flake8 tidy imports
 # - TC: flake8 type-checking
 # - FURB: REFURB
-# - UP: flake8 unused
+# - UP: pyupgrade
 # - BLE: flake8 blind except
 # - ERA: commented code
 # - D: docstyle
@@ -84,7 +83,6 @@ select = [
   "PYI",
   "PT",
   "RSE",
-  "RET",
   "SLF",
   "TID",
   "TC",
@@ -96,7 +94,6 @@ select = [
   "PTH",
   "TRY",
   "SIM",
-  "PT",
   "ARG",
   "ANN",
   "D",
@@ -107,16 +104,16 @@ select = [
 # Future rules: Currently disabled, since it needs some more work.
 # - E501: Line too long -- Not automatically fixable
 # - N: flake8 Naming
-# - DOC: Doclint
 # - S: flake8 Bandit
 # - TD: flake8 TODOS
 # - FIX: flake8 fixme
 # - PL: pylint
 
-# Ignoed rules:
+# Ignored rules:
 # - PYI063: https://docs.astral.sh/ruff/rules/pep484-style-positional-only-parameter/
 # - TRY003: https://docs.astral.sh/ruff/rules/raise-vanilla-args/
 ignore = ["TRY003"]
+
 
 # Allow fix for all enabled rules (when `--fix`) is provided.
 fixable = ["ALL"]
