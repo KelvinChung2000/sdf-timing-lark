@@ -26,9 +26,11 @@ class SDFLarkParser:
             raise FileNotFoundError(f"Grammar file not found: {grammar_path}") from exc
 
         # Create the Lark parser with LALR(1) algorithm for performance
-        self.parser = Lark(
-            grammar, parser="lalr", start="start", transformer=SDFTransformer()
-        )
+        # NOTE: We intentionally do NOT pass transformer= here. Passing it
+        # would bind a single SDFTransformer instance whose mutable state
+        # leaks between parse() calls. Instead, we apply a fresh transformer
+        # in parse() so each invocation starts with clean state.
+        self.parser = Lark(grammar, parser="lalr", start="start")
 
     def parse(self, input_text: str) -> SDFFile:
         """Parse SDF input text and return the timing data structure.
@@ -49,7 +51,8 @@ class SDFLarkParser:
             If parsing fails.
         """
         try:
-            return self.parser.parse(input_text)  # type: ignore[return-value]
+            tree = self.parser.parse(input_text)
+            return SDFTransformer().transform(tree)  # type: ignore[return-value]
         except LarkError as e:
             raise LarkError(
                 f"SDF parsing failed at {getattr(e, 'line', 'unknown')}:"
@@ -106,7 +109,7 @@ def parse_sdf(input_text: str) -> SDFFile:
     SDFFile
         Parsed timing data structure.
     """
-    parser = SDFLarkParser()
+    parser = get_parser()
     return parser.parse(input_text)
 
 

@@ -67,3 +67,23 @@ class TestModuleLevelFunctions:
         sdf_content = (DATA_DIR / "test1.sdf").read_text()
         result = parse_sdf(sdf_content)
         assert result is not None
+
+    def test_parse_sdf_no_state_leak(self):
+        """Parsing the same file twice with one parser must yield identical results.
+
+        This guards against mutable transformer state leaking between calls.
+        """
+        parser = SDFLarkParser()
+        sdf_content = (DATA_DIR / "test1.sdf").read_text()
+
+        result1 = parser.parse(sdf_content)
+        result2 = parser.parse(sdf_content)
+
+        # Sanity check: parsed file should have cells
+        assert len(result1.cells) > 0
+        # Same header
+        assert result1.header == result2.header
+        # Same cells (count and content)
+        assert len(result1.cells) == len(result2.cells)
+        for c1, c2 in zip(result1.cells, result2.cells):
+            assert c1 == c2
