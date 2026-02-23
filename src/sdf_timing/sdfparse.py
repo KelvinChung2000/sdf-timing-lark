@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-# coding: utf-8
+from pathlib import Path
+
 #
 # Copyright 2020-2022 F4PGA Authors
 #
@@ -16,23 +17,23 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 from . import sdfwrite
 from .sdf_lark_parser import parse_sdf
 
 
-def emit(input, timescale='1ps'):
+def emit(input: dict, timescale: str = "1ps") -> str:
     return sdfwrite.emit_sdf(input, timescale)
 
 
-def parse(input):
+def parse(input: str) -> dict:
     """
     Parse SDF input text using Lark parser.
-    
+
     Args:
         input (str): SDF content as string
-        
-    Returns:
+
+    Returns
+    -------
         dict: Parsed timing data structure
     """
     return parse_sdf(input)
@@ -50,7 +51,7 @@ def main():
     sdf_file = sys.argv[1]
 
     try:
-        with open(sdf_file, 'r') as f:
+        with Path(sdf_file).open("r") as f:
             content = f.read()
 
         result = parse(content)

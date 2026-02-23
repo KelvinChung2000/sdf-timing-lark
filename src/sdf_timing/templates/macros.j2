@@ -1,0 +1,15 @@
+{% macro format_timing(entry) -%}
+    {%- if entry.min is none and entry.avg is none and entry.max is none -%}
+        ()
+    {%- else -%}
+        ({{ entry.min }}:{{ entry.avg }}:{{ entry.max }})
+    {%- endif -%}
+{%- endmacro %}
+
+{% macro format_pin(pin, edge) -%}
+    {%- if edge is not none -%}
+        ({{ edge }} {{ pin }})
+    {%- else -%}
+        {{ pin }}
+    {%- endif -%}
+{%- endmacro %}

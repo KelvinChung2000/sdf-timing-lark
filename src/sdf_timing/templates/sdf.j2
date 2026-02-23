@@ -1,0 +1,16 @@
+(DELAYFILE
+    (SDFVERSION "3.0")
+    (TIMESCALE {{ timescale }})
+{% for cell_name, instances in cells | dictsort(case_sensitive=True) %}
+        {%- for instance_name, cell_data in instances | dictsort(case_sensitive=True) %}
+            {%- set celltype = cell_name.upper() if uppercase_celltype else cell_name %}
+    (CELL
+        (CELLTYPE "{{ celltype }}")
+        (INSTANCE {{ instance_name }})
+        {%- if cell_data.delay_entries %}{{ cell_data.delay_entries }}{% endif -%}
+        {%- if cell_data.timingcheck_entries %}{{ cell_data.timingcheck_entries }}{% endif -%}
+        {%- if cell_data.timingenv_entries %}{{ cell_data.timingenv_entries }}{% endif %}
+    )
+        {%- endfor %}
+    {%- endfor %}
+)

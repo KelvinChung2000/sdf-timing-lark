@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding: utf-8
 #
 # Copyright 2020-2022 F4PGA Authors
 #
@@ -18,9 +17,16 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import re
+from typing import Optional, Dict, Any, Union
+
+from .model import (
+    Port, Interconnect, Iopath, Device,
+    Setup, Hold, Removal, Recovery, Width, SetupHold,
+    PathConstraint, BaseEntry
+)
 
 
-def get_scale_fs(timescale):
+def get_scale_fs(timescale: str) -> int:
     """Convert sdf timescale to scale factor to femtoseconds as int
 
     >>> get_scale_fs('1.0 fs')
@@ -48,22 +54,22 @@ def get_scale_fs(timescale):
     Invalid SDF timescale 2s
 
     """
-    mm = re.match(r'(10{0,2})(\.0)? *([munpf]?s)', timescale)
+    mm = re.match(r"(10{0,2})(\.0)? *([munpf]?s)", timescale)
     sc_lut = {
-        's': 1e15,
-        'ms': 1e12,
-        'us': 1e9,
-        'ns': 1e6,
-        'ps': 1e3,
-        'fs': 1,
+        "s": 1e15,
+        "ms": 1e12,
+        "us": 1e9,
+        "ns": 1e6,
+        "ps": 1e3,
+        "fs": 1,
     }
-    assert mm is not None, "Invalid SDF timescale {}".format(timescale)
+    assert mm is not None, f"Invalid SDF timescale {timescale}"
 
     base, _, sc = mm.groups()
     return int(base) * int(sc_lut[sc])
 
 
-def get_scale_seconds(timescale):
+def get_scale_seconds(timescale: str) -> float:
     """Convert sdf timescale to scale factor to floating point seconds
 
     >>> get_scale_seconds('1.0 fs')
@@ -87,110 +93,107 @@ def get_scale_seconds(timescale):
     return 1e-15 * get_scale_fs(timescale)
 
 
-def prepare_entry(name=None,
-                  type=None,
-                  from_pin=None,
-                  to_pin=None,
-                  from_pin_edge=None,
-                  to_pin_edge=None,
-                  delay_paths=None,
-                  cond_equation=None,
-                  is_timing_check=False,
-                  is_timing_env=False,
-                  is_absolute=False,
-                  is_incremental=False,
-                  is_cond=False):
-
-    entry = dict()
-    entry['name'] = name
-    entry['type'] = type
-    entry['from_pin'] = from_pin
-    entry['to_pin'] = to_pin
-    entry['from_pin_edge'] = from_pin_edge
-    entry['to_pin_edge'] = to_pin_edge
-    entry['delay_paths'] = delay_paths
-    entry['is_timing_check'] = is_timing_check
-    entry['is_timing_env'] = is_timing_env
-    entry['is_absolute'] = is_absolute
-    entry['is_incremental'] = is_incremental
-    entry['is_cond'] = is_cond
-    entry['cond_equation'] = cond_equation
-
-    return entry
+def add_port(portname: dict, paths: Any) -> Port:
+    name = "port_" + portname["port"]
+    return Port(
+        name=name,
+        from_pin=portname["port"],
+        to_pin=portname["port"],
+        delay_paths=paths,
+    )
 
 
-def add_port(portname, paths):
-
-    name = "port_" + portname['port']
-    return prepare_entry(name=name,
-                         type='port',
-                         from_pin=portname['port'],
-                         to_pin=portname['port'],
-                         delay_paths=paths)
-
-
-def add_interconnect(pfrom, pto, paths):
-
+def add_interconnect(pfrom: dict, pto: dict, paths: Any) -> Interconnect:
     name = "interconnect_"
-    name += pfrom['port'] + "_" + pto['port']
-    return prepare_entry(name=name,
-                         type='interconnect',
-                         from_pin=pfrom['port'],
-                         to_pin=pto['port'],
-                         from_pin_edge=pfrom['port_edge'],
-                         to_pin_edge=pto['port_edge'],
-                         delay_paths=paths)
+    name += pfrom["port"] + "_" + pto["port"]
+    return Interconnect(
+        name=name,
+        from_pin=pfrom["port"],
+        to_pin=pto["port"],
+        from_pin_edge=pfrom["port_edge"],
+        to_pin_edge=pto["port_edge"],
+        delay_paths=paths,
+    )
 
 
-def add_iopath(pfrom, pto, paths):
-
+def add_iopath(pfrom: dict, pto: dict, paths: Any) -> Iopath:
     name = "iopath_"
-    name += pfrom['port'] + "_" + pto['port']
-    return prepare_entry(name=name,
-                         type='iopath',
-                         from_pin=pfrom['port'],
-                         to_pin=pto['port'],
-                         from_pin_edge=pfrom['port_edge'],
-                         to_pin_edge=pto['port_edge'],
-                         delay_paths=paths)
+    name += pfrom["port"] + "_" + pto["port"]
+    return Iopath(
+        name=name,
+        from_pin=pfrom["port"],
+        to_pin=pto["port"],
+        from_pin_edge=pfrom["port_edge"],
+        to_pin_edge=pto["port_edge"],
+        delay_paths=paths,
+    )
 
 
-def add_device(port, paths):
-
+def add_device(port: dict, paths: Any) -> Device:
     name = "device_"
-    name += port['port']
-    return prepare_entry(name=name,
-                         type='device',
-                         from_pin=port['port'],
-                         to_pin=port['port'],
-                         delay_paths=paths)
+    name += port["port"]
+    return Device(
+        name=name,
+        from_pin=port["port"],
+        to_pin=port["port"],
+        delay_paths=paths,
+    )
 
 
-def add_tcheck(type, pto, pfrom, paths):
-
+def add_tcheck(type: str, pto: dict, pfrom: dict, paths: Any) -> BaseEntry:
     name = type + "_"
-    name += pfrom['port'] + "_" + pto['port']
-    return prepare_entry(name=name,
-                         type=type,
-                         is_timing_check=True,
-                         is_cond=pfrom['cond'],
-                         cond_equation=pfrom['cond_equation'],
-                         from_pin=pfrom['port'],
-                         to_pin=pto['port'],
-                         from_pin_edge=pfrom['port_edge'],
-                         to_pin_edge=pto['port_edge'],
-                         delay_paths=paths)
+    name += pfrom["port"] + "_" + pto["port"]
+    
+    kwargs = {
+        "name": name,
+        "is_timing_check": True,
+        "is_cond": pfrom.get("cond", False),
+        "cond_equation": pfrom.get("cond_equation"),
+        "from_pin": pfrom["port"],
+        "to_pin": pto["port"],
+        "from_pin_edge": pfrom["port_edge"],
+        "to_pin_edge": pto["port_edge"],
+        "delay_paths": paths,
+    }
+
+    if type == "setup":
+        return Setup(**kwargs)
+    elif type == "hold":
+        return Hold(**kwargs)
+    elif type == "removal":
+        return Removal(**kwargs)
+    elif type == "recovery":
+        return Recovery(**kwargs)
+    elif type == "width":
+        # width check usually has only one port, but here it's reused
+        # items[1] is ported to pto and pfrom in transformer
+        return Width(**kwargs)
+    elif type == "setuphold":
+        return SetupHold(**kwargs)
+    else:
+        # Fallback
+        entry = BaseEntry(**kwargs)
+        entry.type = type
+        return entry
 
 
-def add_constraint(type, pto, pfrom, paths):
-
+def add_constraint(type: str, pto: dict, pfrom: dict, paths: Any) -> BaseEntry:
     name = type + "_"
-    name += pfrom['port'] + "_" + pto['port']
-    return prepare_entry(name=name,
-                         type=type,
-                         is_timing_env=True,
-                         from_pin=pfrom['port'],
-                         to_pin=pto['port'],
-                         from_pin_edge=pfrom['port_edge'],
-                         to_pin_edge=pto['port_edge'],
-                         delay_paths=paths)
+    name += pfrom["port"] + "_" + pto["port"]
+    
+    kwargs = {
+        "name": name,
+        "is_timing_env": True,
+        "from_pin": pfrom["port"],
+        "to_pin": pto["port"],
+        "from_pin_edge": pfrom["port_edge"],
+        "to_pin_edge": pto["port_edge"],
+        "delay_paths": paths,
+    }
+    
+    if type == "pathconstraint":
+        return PathConstraint(**kwargs)
+    else:
+        entry = BaseEntry(**kwargs)
+        entry.type = type
+        return entry

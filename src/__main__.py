@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# coding: utf-8
 #
 # Copyright 2020-2022 F4PGA Authors
 #
@@ -19,31 +18,32 @@
 
 import argparse
 import json
+from pathlib import Path
 
-from .sdfparse import emit, parse
+from sdf_timing.sdfparse import emit, parse
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--emit', action='store_const', const=True,
-                        help='When set SDF file will be generated from JSON.')
-    parser.add_argument('--sdf', type=str, help='Path to SDF file')
-    parser.add_argument('--json', type=str, help='Path to JSON file')
+    parser.add_argument("--emit", action="store_const", const=True,
+                        help="When set SDF file will be generated from JSON.")
+    parser.add_argument("--sdf", type=str, help="Path to SDF file")
+    parser.add_argument("--json", type=str, help="Path to JSON file")
 
     args = parser.parse_args()
 
     if args.emit:
-        with open(args.json, 'r') as fp:
+        with Path(args.json).open("r") as fp:
             input = json.loads(fp.read())
             timings = emit(input)
-            open(args.sdf, 'w').write(timings)
+            Path(args.sdf).open("w").write(timings)
     else:
-        with open(args.sdf, 'r') as fp:
+        with Path(args.sdf).open("r") as fp:
             timings = parse(fp.read())
 
-        with open(args.json, 'w') as fp:
+        with Path(args.json).open("w") as fp:
             json.dump(timings, fp, indent=4, sort_keys=True)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

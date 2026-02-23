@@ -10,145 +10,122 @@ sdf_file: "(" DELAYFILE sdf_item* ")"
 sdf_item: sdf_header_item | cell
 
 // Streamlined header items
-sdf_header_item: "(" header_keyword QSTRING? ")"
-               | voltage
-               | temperature
+sdf_header_item: sdf_version
+               | design
+               | date
+               | vendor
+               | program
+               | version
                | hierarchy_divider
+               | voltage
+               | process
+               | temperature
                | timescale
 
-header_keyword: SDFVERSION | DATE | PROCESS | DESIGN | VENDOR | PROGRAM | VERSION
+sdf_version: "(" "SDFVERSION" [QSTRING] ")"
+design: "(" "DESIGN" [QSTRING] ")"
+date: "(" "DATE" [QSTRING] ")"
+vendor: "(" "VENDOR" [QSTRING] ")"
+program: "(" "PROGRAM" [QSTRING] ")"
+version: "(" "VERSION" [QSTRING] ")"
+process: "(" "PROCESS" [QSTRING] ")"
 
-voltage: "(" VOLTAGE real_triple ")"
-       | "(" VOLTAGE rvalue ")"
+voltage: "(" "VOLTAGE" (real_triple | rvalue ) ")"
 
-temperature: "(" TEMPERATURE real_triple ")"
-           | "(" TEMPERATURE rvalue ")"
+temperature: "(" "TEMPERATURE" (real_triple | rvalue) ")"
 
-hierarchy_divider: "(" DIVIDER DOT ")"
-                 | "(" DIVIDER SLASH ")"
+hierarchy_divider: "(" "DIVIDER" (DOT | SLASH) ")"
 
-timescale: "(" TIMESCALE FLOAT STRING ")"
+timescale: "(" "TIMESCALE" FLOAT STRING ")"
 
 // Cell definitions
-cell: "(" CELL celltype instance timing_cell_lst ")"
-    | "(" CELL celltype instance ")"
+cell: "(" "CELL" celltype instance [timing_cell_lst] ")"
 
-timing_cell_lst: timing_cell_entry+
+timing_cell_lst: (timing_check | delay | timingenv)+ 
 
-timing_cell_entry: timing_check | delay | timingenv
+celltype: "(" "CELLTYPE" QSTRING ")"
 
-celltype: "(" CELLTYPE QSTRING ")"
-
-instance: "(" INSTANCE STRING ")"
-        | "(" INSTANCE ASTERISK ")"
-        | "(" INSTANCE ")"
+instance: "(" "INSTANCE" [STRING | ASTERISK]")"
 
 // Timing checks
-timing_check: "(" TIMINGCHECK timing_check_list ")"
+timing_check: "(" "TIMINGCHECK" timing_check_list ")"
 
 timing_check_list: t_check+
 
 t_check: removal_check | recovery_check | hold_check | setup_check | width_check | setuphold_check
 
-removal_check: "(" REMOVAL timing_port timing_port real_triple ")"
+removal_check: "(" "REMOVAL" timing_port timing_port rvalue ")"
 
-recovery_check: "(" RECOVERY timing_port timing_port real_triple ")"
+recovery_check: "(" "RECOVERY" timing_port timing_port rvalue ")"
 
-hold_check: "(" HOLD timing_port timing_port real_triple ")"
+hold_check: "(" "HOLD" timing_port timing_port rvalue ")"
 
-setup_check: "(" SETUP timing_port timing_port real_triple ")"
+setup_check: "(" "SETUP" timing_port timing_port rvalue ")"
 
-width_check: "(" WIDTH timing_port real_triple ")"
+width_check: "(" "WIDTH" timing_port rvalue ")"
 
-setuphold_check: "(" SETUPHOLD timing_port timing_port real_triple real_triple ")"
+setuphold_check: "(" "SETUPHOLD" timing_port timing_port rvalue rvalue ")"
 
-timing_port: port_check | cond_check
+timing_port: port_spec | "(" "COND" equation port_spec ")"
 
-port_check: port_spec
-
-cond_check: "(" COND equation port_spec ")"
-
-// Timing environment  
-timingenv: "(" TIMINGENV constraints_list ")"
+// Timing environment
+timingenv: "(" "TIMINGENV" constraints_list ")"
 
 constraints_list: path_constraint+
 
-path_constraint: "(" PATHCONSTRAINT port_spec port_spec real_triple real_triple ")"
+path_constraint: "(" "PATHCONSTRAINT" port_spec port_spec rvalue rvalue ")"
 
 // Delay section
-delay: "(" DELAY absolute_list ")"
-     | "(" DELAY increment_list ")"
+delay: "(" "DELAY" (absolute_list | increment_list) ")"
 
 absolute_list: absolute+
 
-absolute: "(" ABSOLUTE ")"
-        | "(" ABSOLUTE delay_list ")"
+absolute: "(" "ABSOLUTE" [delay_entry+] ")"
 
 increment_list: increment+
 
-increment: "(" INCREMENT delay_list ")"
+increment: "(" "INCREMENT" delay_entry+ ")"
 
-delay_list: del+
+delay_entry: interconnect | iopath | port | device | cond_delay
 
-del: interconnect | iopath | port | device | cond_delay
-
-cond_delay: "(" COND delay_condition delay_list ")"
+cond_delay: "(" "COND" delay_condition delay_entry+ ")"
+          | "(" "COND" "(" equation ")" iopath ")"
 
 delay_condition: "(" equation ")"
                | equation
 
 // Delay value lists
-delval_list: real_triple
-           | real_triple real_triple  
-           | real_triple real_triple real_triple
+delval_list: rvalue+
 
-device: "(" DEVICE port_spec delval_list ")"
+device: "(" "DEVICE" port_spec delval_list ")"
 
-iopath: "(" IOPATH port_spec port_spec delval_list ")"
+iopath: "(" "IOPATH" port_spec port_spec delval_list ")"
 
-interconnect: "(" INTERCONNECT port_spec port_spec delval_list ")"
+interconnect: "(" "INTERCONNECT" port_spec port_spec delval_list ")"
 
-port: "(" PORT port_spec delval_list ")"
+port: "(" "PORT" port_spec delval_list ")"
 
 // Port specifications
 port_spec: STRING
-         | "(" port_condition STRING ")"
+         | "(" (POSEDGE | NEGEDGE) STRING ")"
          | FLOAT
-
-port_condition: POSEDGE | NEGEDGE
 
 // Real value (single or triple)
 rvalue: FLOAT
-      | real_triple
+      | "(" [real_triple] ")"
 
-// Real triples (timing values) - comprehensive coverage
-real_triple: FLOAT ":" FLOAT ":" FLOAT
-           | ":" FLOAT ":" FLOAT
-           | FLOAT ":" ":" FLOAT
-           | FLOAT ":" FLOAT ":"
-           | ":" ":" FLOAT
-           | ":" FLOAT ":"
-           | FLOAT ":" ":"
-           | "(" FLOAT ":" FLOAT ":" FLOAT ")"
-           | "(" ":" FLOAT ":" FLOAT ")"
-           | "(" FLOAT ":" ":" FLOAT ")"
-           | "(" FLOAT ":" FLOAT ":" ")"
-           | "(" ":" ":" FLOAT ")"
-           | "(" ":" FLOAT ":" ")"
-           | "(" FLOAT ":" ":" ")"
-           | "(" ")"
+real_triple: [FLOAT] ":" [FLOAT] ":" [FLOAT]
 
 // Equations (for conditions)
-equation: equation_item+
+equation: (operator | STRING | FLOAT | SCALARCONSTANT)+
 
-equation_item: operator | STRING | FLOAT | SCALARCONSTANT
-
-operator: ARITHMETIC | SLASH | MODULO | LOGIC_NOT | BIT_NOT | LOGIC_AND 
+operator: ARITHMETIC | SLASH | MODULO | LOGIC_NOT | BIT_NOT | LOGIC_AND
         | BIT_AND | NAND | LOGIC_OR | BIT_OR | NOR | XOR | XNOR | EQUAL
-        | NEQUAL | CASEEQUAL | CASENEQUAL | LEFTSHIFT | RIGHTSHIFT 
+        | NEQUAL | CASEEQUAL | CASENEQUAL | LEFTSHIFT | RIGHTSHIFT
         | GT | LT | GTE | LTE
 
 // Terminals (Tokens)
+// Keywords
 // Keywords
 DELAYFILE: "DELAYFILE"
 SDFVERSION: "SDFVERSION"
@@ -156,34 +133,10 @@ DESIGN: "DESIGN"
 VENDOR: "VENDOR"
 PROGRAM: "PROGRAM"
 VERSION: "VERSION"
-TIMESCALE: "TIMESCALE"
-CELL: "CELL"
-CELLTYPE: "CELLTYPE"
-INSTANCE: "INSTANCE"
-DELAY: "DELAY"
-ABSOLUTE: "ABSOLUTE"
-INCREMENT: "INCREMENT"
-IOPATH: "IOPATH"
 POSEDGE: "posedge"
 NEGEDGE: "negedge"
-SETUP: "SETUP"
-HOLD: "HOLD"
-REMOVAL: "REMOVAL"
-RECOVERY: "RECOVERY"
-TIMINGCHECK: "TIMINGCHECK"
-DIVIDER: "DIVIDER"
 DATE: "DATE"
-VOLTAGE: "VOLTAGE"
 PROCESS: "PROCESS"
-TEMPERATURE: "TEMPERATURE"
-TIMINGENV: "TIMINGENV"
-PATHCONSTRAINT: "PATHCONSTRAINT"
-INTERCONNECT: "INTERCONNECT"
-PORT: "PORT"
-SETUPHOLD: "SETUPHOLD"
-WIDTH: "WIDTH"
-COND: "COND"
-DEVICE: "DEVICE"
 
 // Operators
 ARITHMETIC: "+" | "-" | "*"
@@ -217,7 +170,7 @@ ASTERISK: "*"
 // Improved values (better patterns but compatible)
 FLOAT: /-?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?/
 SCALARCONSTANT: /[01]?'[bB][01]/
-QFLOAT: /"[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?"/  
+QFLOAT: /"[-+]?(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?"/
 QSTRING: /"[^"]*"/
 STRING: /[a-zA-Z0-9_\/.\[\]\\]+/
 
