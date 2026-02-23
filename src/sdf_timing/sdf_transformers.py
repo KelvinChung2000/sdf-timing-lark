@@ -6,7 +6,7 @@ from typing import TypeVar
 
 from lark import Token, Transformer, v_args
 
-from .model import (
+from sdf_timing.model import (
     BaseEntry,
     DelayPaths,
     Device,

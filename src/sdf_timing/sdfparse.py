@@ -23,11 +23,11 @@ import sys
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from . import sdfwrite
-from .sdf_lark_parser import parse_sdf
+from sdf_timing import sdfwrite
+from sdf_timing.sdf_lark_parser import parse_sdf
 
 if TYPE_CHECKING:
-    from .model import SDFFile
+    from sdf_timing.model import SDFFile
 
 
 def emit(input: SDFFile, timescale: str = "1ps") -> str:  # noqa: A002

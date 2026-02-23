@@ -21,12 +21,8 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    import builtins
-
-from .model import (
+from sdf_timing.model import (
     DelayPaths,
     Device,
     EntryType,
@@ -184,7 +180,7 @@ def add_tcheck(
     is_cond = pfrom["cond"]
     cond_equation = pfrom["cond_equation"]
 
-    check_classes: dict[EntryType, builtins.type[TimingCheck]] = {
+    check_classes: dict[EntryType, type[TimingCheck]] = {
         EntryType.SETUP: Setup,
         EntryType.HOLD: Hold,
         EntryType.REMOVAL: Removal,

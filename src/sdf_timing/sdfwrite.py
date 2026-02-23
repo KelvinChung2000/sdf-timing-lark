@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING
 import jinja2
 
 if TYPE_CHECKING:
-    from .model import BaseEntry, SDFFile
+    from sdf_timing.model import BaseEntry, SDFFile
 
 env = jinja2.Environment(loader=jinja2.PackageLoader("sdf_timing", "templates"))
 

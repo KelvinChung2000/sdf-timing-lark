@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING
 
 from lark import Lark, LarkError
 
-from .sdf_transformers import SDFTransformer
+from sdf_timing.sdf_transformers import SDFTransformer
 
 if TYPE_CHECKING:
-    from .model import SDFFile
+    from sdf_timing.model import SDFFile
 
 
 class SDFLarkParser:
@@ -17,8 +17,7 @@ class SDFLarkParser:
 
     def __init__(self) -> None:
         """Initialize the parser with the SDF grammar."""
-        # Get the path to the grammar file
-        grammar_path = Path(__file__).parent / "sdf.lark"
+        grammar_path = (Path(__file__).parent / "sdf.lark").resolve()
 
         try:
             with grammar_path.open() as f:
