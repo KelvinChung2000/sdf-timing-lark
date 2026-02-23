@@ -44,6 +44,27 @@ class TestParseFile:
         assert result is not None
         assert hasattr(result, "cells")
 
+    def test_parse_with_comments(self):
+        """SDF files with // comments should parse successfully."""
+        sdf_with_comments = '''(DELAYFILE
+            // This is a comment
+            (SDFVERSION "3.0")
+            (TIMESCALE 1ps)
+            (CELL
+                (CELLTYPE "BUF")
+                (INSTANCE buf1)
+                // Comment inside cell
+                (DELAY
+                    (ABSOLUTE
+                        (IOPATH A Z (1.0:2.0:3.0)(4.0:5.0:6.0))
+                    )
+                )
+            )
+        )'''
+        result = SDFLarkParser().parse(sdf_with_comments)
+        assert len(result.cells) == 1
+        assert "BUF" in result.cells
+
     def test_parse_file_nonexistent(self):
         parser = SDFLarkParser()
         with pytest.raises(Exception, match="Error reading SDF file"):

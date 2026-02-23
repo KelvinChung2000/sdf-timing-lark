@@ -177,3 +177,5 @@ STRING: /[a-zA-Z0-9_\/.\[\]\\]+/
 // Ignore whitespace and comments
 %import common.WS
 %ignore WS
+COMMENT: /\/\/[^\n]*/
+%ignore COMMENT

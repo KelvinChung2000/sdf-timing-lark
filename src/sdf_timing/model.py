@@ -71,6 +71,7 @@ class SDFHeader:
         return getattr(self, key, None) is not None
 
     def get(self, key: str, default: str | None = None) -> str | None:
+        """Return the header field *key*, falling back to *default* via getattr."""
         return getattr(self, key, default)
 
     def keys(self) -> KeysView[str]:
