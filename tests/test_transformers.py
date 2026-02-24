@@ -45,12 +45,34 @@ class TestCondTimingChecks:
             assert entry.is_cond is True
             assert entry.cond_equation is not None
 
-        # Entries are keyed by name (width_PORT_PORT), so name collisions
-        # mean fewer entries than in the SDF source.
         cond_widths = [w for w in width_entries if w.is_cond]
         plain_widths = [w for w in width_entries if not w.is_cond]
-        assert len(cond_widths) >= 1
-        assert len(plain_widths) >= 1
+        assert len(cond_widths) == 2
+        assert len(plain_widths) == 2
+
+
+class TestCondIopathCollisions:
+    def test_all_conditional_iopaths_preserved(self):
+        """All 4 conditional IOPATHs for CP->Q/QN must survive, not just 2."""
+        sdf_content = (DATA_DIR / "spec-example2.sdf").read_text()
+        result = parse_sdf(sdf_content)
+        instance = result.cells["CDS_GEN_FD_P_SD_RB_SB_NO"]["top.ff1"]
+
+        cond_iopaths = [
+            e for e in instance.values() if e.type == EntryType.IOPATH and e.is_cond
+        ]
+        assert len(cond_iopaths) == 4
+
+    def test_all_hold_setup_entries_preserved(self):
+        """clb.sdf has multiple HOLD/SETUP CLK entries that must all survive."""
+        sdf_content = (DATA_DIR / "clb.sdf").read_text()
+        result = parse_sdf(sdf_content)
+        instance = result.cells["LUT_OR_MEM5LRAM"]["SLICEM"]
+
+        hold_entries = [e for e in instance.values() if e.type == EntryType.HOLD]
+        setup_entries = [e for e in instance.values() if e.type == EntryType.SETUP]
+        assert len(hold_entries) == 6
+        assert len(setup_entries) == 6
 
 
 class TestSingleFloatRvalue:

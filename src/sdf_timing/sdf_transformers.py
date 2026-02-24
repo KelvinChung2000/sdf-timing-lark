@@ -27,6 +27,7 @@ from sdf_timing.model import (
     Values,
     Width,
 )
+from sdf_timing.utils import store_entry
 
 _TC = TypeVar("_TC", bound=TimingCheck)
 
@@ -491,8 +492,9 @@ class SDFTransformer(Transformer):
         delays: list[BaseEntry],
     ) -> None:
         """Add delays to a cell."""
+        cell_dict = self.sdf_file_obj.cells[celltype][instance]
         for delay in delays:
-            self.sdf_file_obj.cells[celltype][instance][delay.name] = delay
+            store_entry(cell_dict, delay)
 
     # ── Terminal values ──────────────────────────────────────────────
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 import re
 
 from sdf_timing.model import (
+    BaseEntry,
     DelayPaths,
     Device,
     EntryType,
@@ -40,6 +41,23 @@ from sdf_timing.model import (
     TimingPortSpec,
     Width,
 )
+
+
+def store_entry(cell_dict: dict[str, BaseEntry], entry: BaseEntry) -> str:
+    """Store entry in cell dict, appending _N suffix on name collision.
+
+    The first entry keeps its base name. Subsequent collisions get _1, _2, etc.
+    """
+    base_name = entry.name
+    key = base_name
+    if key in cell_dict:
+        counter = 1
+        while f"{base_name}_{counter}" in cell_dict:
+            counter += 1
+        key = f"{base_name}_{counter}"
+        entry.name = key
+    cell_dict[key] = entry
+    return key
 
 
 def get_scale_fs(timescale: str) -> int:
