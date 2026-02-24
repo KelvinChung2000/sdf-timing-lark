@@ -1,0 +1,554 @@
+"""Timing path graph module for SDF timing analysis.
+
+Builds a directed multigraph from parsed SDF data and provides methods
+for path finding, delay composition, and verification.
+"""
+
+from __future__ import annotations
+
+import functools
+import itertools
+import operator
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
+
+import networkx as nx
+
+from sdf_timing.model import DelayPaths, EntryType
+
+if TYPE_CHECKING:
+    from sdf_timing.model import SDFFile
+
+
+@dataclass
+class RankedPath:
+    """A path with its composed delay and a scalar for ranking.
+
+    Attributes
+    ----------
+    edges : list[TimingEdge]
+        The ordered sequence of timing edges forming the path.
+    delay : DelayPaths
+        The composed delay along the path.
+    scalar : float | None
+        The extracted scalar value used for ranking.
+    """
+
+    edges: list[TimingEdge]
+    delay: DelayPaths
+    scalar: float | None
+
+
+@dataclass(frozen=True)
+class TimingEdge:
+    """A single directed timing edge between two pins.
+
+    Attributes
+    ----------
+    source : str
+        Fully-qualified source pin name (e.g., ``"B1/C1/i"``).
+    sink : str
+        Fully-qualified sink pin name (e.g., ``"B1/C1/z"``).
+    delay : DelayPaths
+        The delay associated with this edge.
+    entry_type : EntryType
+        The SDF entry type (IOPATH, INTERCONNECT, etc.).
+    cell_type : str
+        The cell type from the SDF file.
+    instance : str
+        The instance name from the SDF file.
+    """
+
+    source: str
+    sink: str
+    delay: DelayPaths
+    entry_type: EntryType
+    cell_type: str
+    instance: str
+
+
+@dataclass
+class VerificationResult:
+    """Result of verifying a path's composed delay against an expected value.
+
+    Attributes
+    ----------
+    source : str
+        The source pin of the path.
+    sink : str
+        The sink pin of the path.
+    expected : DelayPaths
+        The expected delay for the path.
+    actual : list[DelayPaths]
+        The actual composed delays for all paths found.
+    passed : bool
+        Whether any actual delay matches the expected within tolerance.
+    tolerance : float
+        The tolerance used for comparison.
+    """
+
+    source: str
+    sink: str
+    expected: DelayPaths
+    actual: list[DelayPaths]
+    passed: bool
+    tolerance: float
+
+
+def _qualify_pin(instance: str, pin: str, divider: str) -> str:
+    """Qualify a local pin name with its instance path.
+
+    Parameters
+    ----------
+    instance : str
+        The instance hierarchy path (e.g., ``"B1/C1"``).
+    pin : str
+        The local pin name (e.g., ``"i"``).
+    divider : str
+        The hierarchy divider character.
+
+    Returns
+    -------
+    str
+        The fully-qualified pin name (e.g., ``"B1/C1/i"``).
+    """
+    if instance:
+        return f"{instance}{divider}{pin}"
+    return pin
+
+
+def _edge_from_attrs(
+    source: str,
+    sink: str,
+    attrs: dict[str, object],
+) -> TimingEdge:
+    """Construct a TimingEdge from graph edge attribute dict.
+
+    Parameters
+    ----------
+    source : str
+        The source node name.
+    sink : str
+        The sink node name.
+    attrs : dict[str, object]
+        The edge attribute dictionary from the NetworkX graph.
+
+    Returns
+    -------
+    TimingEdge
+        The constructed timing edge.
+    """
+    return TimingEdge(
+        source=source,
+        sink=sink,
+        delay=attrs["delay"],  # type: ignore[arg-type]
+        entry_type=attrs["entry_type"],  # type: ignore[arg-type]
+        cell_type=attrs["cell_type"],  # type: ignore[arg-type]
+        instance=attrs["instance"],  # type: ignore[arg-type]
+    )
+
+
+class TimingGraph:
+    """Directed multigraph of timing edges built from an SDF file.
+
+    Wraps a ``networkx.MultiDiGraph`` and provides methods for path
+    finding, delay composition, and graph inspection.
+
+    Parameters
+    ----------
+    sdf : SDFFile
+        The parsed SDF file to build the graph from.
+    """
+
+    def __init__(self, sdf: SDFFile) -> None:
+        self._graph: nx.MultiDiGraph = nx.MultiDiGraph()
+        self._build(sdf)
+
+    def _build(self, sdf: SDFFile) -> None:
+        """Populate the graph from SDF cells.
+
+        For each cell in the SDF file, IOPATH and INTERCONNECT entries
+        are converted to directed edges. IOPATH pin names are qualified
+        with the instance hierarchy path, while INTERCONNECT pin names
+        are used as-is (they are already fully qualified).
+
+        Parameters
+        ----------
+        sdf : SDFFile
+            The parsed SDF file.
+        """
+        divider = sdf.header.divider or "/"
+
+        for cell_type, instances in sdf.cells.items():
+            for instance, entries in instances.items():
+                for _entry_name, entry in entries.items():
+                    if entry.type not in (EntryType.IOPATH, EntryType.INTERCONNECT):
+                        continue
+
+                    if entry.from_pin is None or entry.to_pin is None:
+                        continue
+
+                    if entry.delay_paths is None:
+                        continue
+
+                    if entry.type == EntryType.INTERCONNECT:
+                        source = entry.from_pin
+                        sink = entry.to_pin
+                    else:
+                        source = _qualify_pin(instance, entry.from_pin, divider)
+                        sink = _qualify_pin(instance, entry.to_pin, divider)
+
+                    self._graph.add_edge(
+                        source,
+                        sink,
+                        delay=entry.delay_paths,
+                        entry_type=entry.type,
+                        cell_type=cell_type,
+                        instance=instance,
+                    )
+
+    @property
+    def graph(self) -> nx.MultiDiGraph:
+        """Expose the underlying NetworkX MultiDiGraph for advanced analysis.
+
+        Returns
+        -------
+        nx.MultiDiGraph
+            The backing graph.
+        """
+        return self._graph
+
+    def nodes(self) -> set[str]:
+        """Return all node names in the graph.
+
+        Returns
+        -------
+        set[str]
+            Set of fully-qualified pin names.
+        """
+        return set(self._graph.nodes())
+
+    def startpoints(self) -> set[str]:
+        """Return nodes with in-degree 0 (primary inputs).
+
+        Returns
+        -------
+        set[str]
+            Set of node names that have no incoming edges.
+        """
+        return {n for n, d in self._graph.in_degree() if d == 0}
+
+    def endpoints(self) -> set[str]:
+        """Return nodes with out-degree 0 (primary outputs).
+
+        Returns
+        -------
+        set[str]
+            Set of node names that have no outgoing edges.
+        """
+        return {n for n, d in self._graph.out_degree() if d == 0}
+
+    def edges(self) -> list[TimingEdge]:
+        """Return all edges in the graph as TimingEdge objects.
+
+        Returns
+        -------
+        list[TimingEdge]
+            All timing edges in the graph.
+        """
+        return [
+            _edge_from_attrs(u, v, attrs)
+            for u, v, _key, attrs in self._graph.edges(data=True, keys=True)
+        ]
+
+    def successors(self, node: str) -> list[TimingEdge]:
+        """Return all outgoing edges from a node.
+
+        Parameters
+        ----------
+        node : str
+            The source node name.
+
+        Returns
+        -------
+        list[TimingEdge]
+            Outgoing timing edges from the node.
+        """
+        return [
+            _edge_from_attrs(u, v, attrs)
+            for u, v, _key, attrs in self._graph.out_edges(node, data=True, keys=True)
+        ]
+
+    def predecessors(self, node: str) -> list[TimingEdge]:
+        """Return all incoming edges to a node.
+
+        Parameters
+        ----------
+        node : str
+            The sink node name.
+
+        Returns
+        -------
+        list[TimingEdge]
+            Incoming timing edges to the node.
+        """
+        return [
+            _edge_from_attrs(u, v, attrs)
+            for u, v, _key, attrs in self._graph.in_edges(node, data=True, keys=True)
+        ]
+
+    def find_paths(
+        self,
+        source: str,
+        sink: str,
+        max_depth: int = 50,
+    ) -> list[list[TimingEdge]]:
+        """Find all simple paths between source and sink as edge sequences.
+
+        Uses ``nx.all_simple_paths`` to find node paths, then converts
+        each to a sequence of TimingEdge objects. For MultiDiGraph edges,
+        all combinations of parallel edges are enumerated via Cartesian
+        product.
+
+        Parameters
+        ----------
+        source : str
+            The source node name.
+        sink : str
+            The sink node name.
+        max_depth : int, optional
+            Maximum path length (number of edges), by default 50.
+
+        Returns
+        -------
+        list[list[TimingEdge]]
+            All simple paths as lists of TimingEdge objects.
+        """
+        edge_paths: list[list[TimingEdge]] = []
+
+        for node_path in nx.all_simple_paths(
+            self._graph, source, sink, cutoff=max_depth
+        ):
+            hop_options: list[list[TimingEdge]] = []
+            for u, v in itertools.pairwise(node_path):
+                edge_dict = self._graph[u][v]
+                hop_edges = [
+                    _edge_from_attrs(u, v, attrs) for attrs in edge_dict.values()
+                ]
+                hop_options.append(hop_edges)
+
+            for combination in itertools.product(*hop_options):
+                edge_paths.append(list(combination))
+
+        return edge_paths
+
+    def compose_delay(self, path: list[TimingEdge]) -> DelayPaths:
+        """Sum the delays along a path of timing edges.
+
+        Parameters
+        ----------
+        path : list[TimingEdge]
+            An ordered sequence of timing edges forming a path.
+
+        Returns
+        -------
+        DelayPaths
+            The total composed delay along the path.
+
+        Raises
+        ------
+        ValueError
+            If the path is empty.
+        """
+        if not path:
+            raise ValueError("Cannot compose delay for an empty path.")
+
+        return functools.reduce(operator.add, (edge.delay for edge in path))
+
+    def compose(self, source: str, sink: str) -> list[DelayPaths]:
+        """Find all paths and return their composed delays.
+
+        Parameters
+        ----------
+        source : str
+            The source node name.
+        sink : str
+            The sink node name.
+
+        Returns
+        -------
+        list[DelayPaths]
+            Composed delays for each path found between source and sink.
+        """
+        paths = self.find_paths(source, sink)
+        return [self.compose_delay(p) for p in paths]
+
+
+def verify_path(
+    graph: TimingGraph,
+    source: str,
+    sink: str,
+    expected: DelayPaths,
+    tolerance: float = 1e-9,
+) -> VerificationResult:
+    """Verify that a path's composed delay matches an expected value.
+
+    Parameters
+    ----------
+    graph : TimingGraph
+        The timing graph to search.
+    source : str
+        The source node name.
+    sink : str
+        The sink node name.
+    expected : DelayPaths
+        The expected total delay.
+    tolerance : float, optional
+        Absolute tolerance for floating-point comparison, by default 1e-9.
+
+    Returns
+    -------
+    VerificationResult
+        The verification result containing expected, actual, and pass/fail.
+    """
+    actual = graph.compose(source, sink)
+    passed = any(expected.approx_eq(a, tolerance) for a in actual)
+    return VerificationResult(
+        source=source,
+        sink=sink,
+        expected=expected,
+        actual=actual,
+        passed=passed,
+        tolerance=tolerance,
+    )
+
+
+def rank_paths(
+    graph: TimingGraph,
+    source: str,
+    sink: str,
+    field: str = "slow",
+    metric: str = "max",
+    descending: bool = True,
+) -> list[RankedPath]:
+    """Find all paths between source and sink, sorted by scalar delay.
+
+    Parameters
+    ----------
+    graph : TimingGraph
+        The timing graph.
+    source : str
+        The source node name.
+    sink : str
+        The sink node name.
+    field : str
+        Delay field to extract (nominal, fast, slow, …).
+    metric : str
+        Metric to extract (min, avg, max).
+    descending : bool
+        If True, sort largest scalar first. Paths with None scalar go last.
+
+    Returns
+    -------
+    list[RankedPath]
+        Ranked list of paths.
+    """
+    edge_paths = graph.find_paths(source, sink)
+    ranked: list[RankedPath] = []
+    for edges in edge_paths:
+        delay = graph.compose_delay(edges)
+        scalar = delay.get_scalar(field, metric)
+        ranked.append(RankedPath(edges=edges, delay=delay, scalar=scalar))
+
+    def _sort_key(rp: RankedPath) -> tuple[int, float]:
+        if rp.scalar is None:
+            return (1, 0.0)
+        return (0, rp.scalar)
+
+    ranked.sort(key=_sort_key, reverse=descending)
+    return ranked
+
+
+def critical_path(
+    graph: TimingGraph,
+    source: str,
+    sink: str,
+    field: str = "slow",
+    metric: str = "max",
+) -> RankedPath | None:
+    """Return the path with the largest scalar delay, or None.
+
+    Parameters
+    ----------
+    graph : TimingGraph
+        The timing graph.
+    source : str
+        The source node name.
+    sink : str
+        The sink node name.
+    field : str
+        Delay field to extract.
+    metric : str
+        Metric to extract.
+
+    Returns
+    -------
+    RankedPath | None
+        The critical (slowest) path, or None if no paths exist.
+    """
+    ranked = rank_paths(graph, source, sink, field, metric, descending=True)
+    return ranked[0] if ranked else None
+
+
+def compute_slack(
+    graph: TimingGraph,
+    source: str,
+    sink: str,
+    period: float,
+    field: str = "slow",
+    metric: str = "max",
+) -> float | None:
+    """Compute the slack for a path: ``period - critical_path.scalar``.
+
+    Parameters
+    ----------
+    graph : TimingGraph
+        The timing graph.
+    source : str
+        The source node name.
+    sink : str
+        The sink node name.
+    period : float
+        The clock period or timing constraint.
+    field : str
+        Delay field to extract.
+    metric : str
+        Metric to extract.
+
+    Returns
+    -------
+    float | None
+        The slack, or None if no critical path or scalar is None.
+    """
+    cp = critical_path(graph, source, sink, field, metric)
+    if cp is None or cp.scalar is None:
+        return None
+    return period - cp.scalar
+
+
+def decompose_delay(total: DelayPaths, known: DelayPaths) -> DelayPaths:
+    """Compute the unknown delay segment by subtracting known from total.
+
+    Parameters
+    ----------
+    total : DelayPaths
+        The total end-to-end delay.
+    known : DelayPaths
+        The known portion of the delay.
+
+    Returns
+    -------
+    DelayPaths
+        The remaining unknown delay (total - known).
+    """
+    return total - known

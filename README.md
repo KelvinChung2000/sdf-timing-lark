@@ -1,15 +1,20 @@
 # python-sdf-timing
 
-A Python library for parsing and writing Standard Delay Format (SDF) Timing Annotation files. Built using [Lark](https://github.com/lark-parser/lark) parser generator for robust and efficient SDF processing.
+A Python library for parsing, writing, and analyzing Standard Delay Format (SDF) Timing Annotation files. Built using [Lark](https://github.com/lark-parser/lark) parser generator for robust and efficient SDF processing.
 
 ## Features
 
 - **Parse SDF files** into Python data structures
 - **Write SDF files** from Python objects using Jinja2 templates
-- **Command-line interface** for quick SDF parsing and validation
+- **Timing path graph** built on NetworkX for path finding and delay composition
+- **Delay arithmetic** on Values and DelayPaths (add, subtract, negate, scale, approximate equality)
+- **Path composition** to sum delays along multi-hop timing paths
+- **Path verification** to check composed delays against expected values
+- **Delay decomposition** to extract unknown segments from total and known delays
+- **Modern Typer CLI** with commands for parsing, emitting, inspection, composition, verification, and decomposition
 - **Comprehensive timing support** including:
   - IOPATH delays
-  - INTERCONNECT delays  
+  - INTERCONNECT delays
   - PORT delays
   - DEVICE delays
   - Timing checks (SETUP, HOLD, RECOVERY, REMOVAL, WIDTH, SETUPHOLD)
@@ -39,68 +44,158 @@ uv pip install -e '.[dev]'
 
 ## Usage
 
-### Python API
+### Command Line Interface
+
+The `sdf-timing` CLI provides several commands for working with SDF files.
 
 #### Parse an SDF file
 
-```python
-from sdf_timing.sdfparse import parse
+```bash
+# Output as JSON (default)
+sdf-timing parse design.sdf
 
-with open("design.sdf", "r") as f:
-    sdf_content = f.read()
+# Output as SDF
+sdf-timing parse design.sdf --format sdf
 
-# Parse the SDF file
-timing_data = parse(sdf_content)
-
-# Access header information
-print(timing_data.header.design)
-print(timing_data.header.timescale)
-
-# Iterate through cells and their timing entries
-for cell_name, cell_data in timing_data.cells.items():
-    print(f"Cell: {cell_name}")
-    for entry in cell_data.entries:
-        print(f"  Type: {entry.type}")
-        print(f"  Delays: {entry.delays}")
+# With custom timescale
+sdf-timing parse design.sdf --format sdf --timescale 1ns
 ```
 
-#### Write an SDF file
-
-```python
-from sdf_timing.sdfparse import emit
-from sdf_timing.model import SDFFile, SDFHeader, Cell
-
-# Create or modify timing data
-timing_data = SDFFile(
-    header=SDFHeader(
-        design="my_design",
-        timescale="1ns"
-    ),
-    cells={...}
-)
-
-# Emit SDF content
-sdf_output = emit(timing_data, timescale="1ns")
-
-with open("output.sdf", "w") as f:
-    f.write(sdf_output)
-```
-
-### Command Line Interface
-
-Parse an SDF file and output JSON:
+#### Inspect an SDF file
 
 ```bash
-sdf_timing_parse design.sdf
+sdf-timing info design.sdf
 ```
 
-The JSON output includes the complete timing hierarchy and can be used for further processing or analysis.
+Displays Rich-formatted tables showing header fields, cell count, entry type breakdown, and instance list.
+
+#### Compose path delays
+
+```bash
+# Find all paths from source to sink and sum their delays
+sdf-timing compose design.sdf P1/z P2/i
+
+# Verbose mode shows full edge-by-edge path details
+sdf-timing compose design.sdf P1/z P2/i --verbose
+```
+
+#### Verify a path delay
+
+```bash
+sdf-timing verify design.sdf P1/z P2/i \
+    --expected '{"fast": {"min": 1.805, "avg": null, "max": 1.805}}'
+```
+
+#### Decompose a delay
+
+```bash
+sdf-timing decompose \
+    --total '{"nominal": {"min": 3.0, "avg": null, "max": 3.0}}' \
+    --known '{"nominal": {"min": 1.0, "avg": null, "max": 1.0}}'
+```
+
+#### Convert JSON back to SDF
+
+```bash
+sdf-timing parse design.sdf > design.json
+sdf-timing emit design.json
+```
+
+### Python API
+
+#### Parse and emit SDF files
+
+```python
+from sdf_timing import parse, emit
+
+# Parse SDF text into an SDFFile object
+with open("design.sdf") as f:
+    sdf = parse(f.read())
+
+# Access header information
+print(sdf.header.design)
+print(sdf.header.timescale)
+
+# Iterate through cells and their timing entries
+for cell_type, instances in sdf.cells.items():
+    for instance, entries in instances.items():
+        for name, entry in entries.items():
+            print(f"{cell_type}/{instance}: {entry.type} {entry.from_pin} -> {entry.to_pin}")
+
+# Emit back to SDF text
+sdf_output = emit(sdf, timescale="1ns")
+```
+
+#### Build a timing graph and compose delays
+
+```python
+from sdf_timing import parse, TimingGraph
+
+with open("design.sdf") as f:
+    sdf = parse(f.read())
+
+graph = TimingGraph(sdf)
+
+# List all nodes (pin names)
+print(graph.nodes())
+
+# Find all paths between two pins
+paths = graph.find_paths("P1/z", "P2/i")
+for path in paths:
+    total_delay = graph.compose_delay(path)
+    print(total_delay.to_dict())
+
+# Or compose directly (returns list of delays for all paths found)
+delays = graph.compose("P1/z", "P2/i")
+```
+
+#### Verify and decompose delays
+
+```python
+from sdf_timing import verify_path, decompose_delay
+from sdf_timing.model import DelayPaths, Values
+
+# Verify a path's delay matches expected
+result = verify_path(graph, "P1/z", "P2/i",
+    expected=DelayPaths(fast=Values(min=1.805, avg=None, max=1.805)),
+    tolerance=1e-6)
+print(result.passed)  # True or False
+
+# Decompose: compute unknown = total - known
+unknown = decompose_delay(
+    total=DelayPaths(nominal=Values(min=3.0, avg=None, max=3.0)),
+    known=DelayPaths(nominal=Values(min=1.0, avg=None, max=1.0)),
+)
+```
+
+#### Delay arithmetic
+
+```python
+from sdf_timing.model import Values, DelayPaths
+
+a = Values(min=1.0, avg=2.0, max=3.0)
+b = Values(min=0.5, avg=1.0, max=1.5)
+
+c = a + b         # Values(min=1.5, avg=3.0, max=4.5)
+d = a - b         # Values(min=0.5, avg=1.0, max=1.5)
+e = -a            # Values(min=-1.0, avg=-2.0, max=-3.0)
+f = a * 2.0       # Values(min=2.0, avg=4.0, max=6.0)
+g = 2.0 * a       # same as above
+
+a.approx_eq(b)    # False
+a.approx_eq(a)    # True
+```
+
+None propagates through all operations -- if either operand is None for a field, the result is None.
 
 ## Requirements
 
 - Python 3.11 or higher
 - [Lark](https://github.com/lark-parser/lark) parser
 - [Jinja2](https://jinja.palletsprojects.com/) templating engine
+- [Typer](https://typer.tiangolo.com/) CLI framework
+- [Rich](https://rich.readthedocs.io/) terminal formatting
+- [NetworkX](https://networkx.org/) graph library
 
 ## Development
 
@@ -113,20 +208,14 @@ uv pip install -e '.[dev]'
 Run tests:
 
 ```bash
-pytest
-```
-
-Run tests with coverage:
-
-```bash
-pytest --cov=sdf_timing --cov-report=term-missing
+uv run pytest
 ```
 
 Code formatting and linting:
 
 ```bash
-ruff check src/ tests/
-ruff format src/ tests/
+uv run ruff check src/ tests/
+uv run ruff format src/ tests/
 ```
 
 ## About Standard Delay Format

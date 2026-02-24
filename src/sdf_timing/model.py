@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import operator
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, Any, ClassVar, TypedDict
 
 if TYPE_CHECKING:
-    from collections.abc import ItemsView, KeysView, ValuesView
+    from collections.abc import Callable, ItemsView, KeysView, ValuesView
 
 
 class EntryType(StrEnum):
@@ -106,6 +107,162 @@ class Values:
         """Return the triple as a dictionary."""
         return {"min": self.min, "avg": self.avg, "max": self.max}
 
+    def _binop(
+        self,
+        other: Values,
+        op: Callable[[float, float], float],
+    ) -> Values:
+        """Apply a binary operation element-wise.
+
+        Parameters
+        ----------
+        other : Values
+            The other Values triple.
+        op : Callable[[float, float], float]
+            The binary operation to apply.
+
+        Returns
+        -------
+        Values
+            A new Values with the operation applied. None propagates
+            None.
+        """
+
+        def _apply(
+            a: float | None,
+            b: float | None,
+        ) -> float | None:
+            if a is not None and b is not None:
+                return op(a, b)
+            return None
+
+        return Values(
+            min=_apply(self.min, other.min),
+            avg=_apply(self.avg, other.avg),
+            max=_apply(self.max, other.max),
+        )
+
+    def __add__(self, other: Values) -> Values:
+        """Element-wise addition of two Values triples.
+
+        Parameters
+        ----------
+        other : Values
+            The other Values triple to add.
+
+        Returns
+        -------
+        Values
+            A new Values with element-wise sums. None propagates None.
+        """
+        return self._binop(other, operator.add)
+
+    def __sub__(self, other: Values) -> Values:
+        """Element-wise subtraction of two Values triples.
+
+        Parameters
+        ----------
+        other : Values
+            The other Values triple to subtract.
+
+        Returns
+        -------
+        Values
+            A new Values with element-wise differences. None propagates
+            None.
+        """
+        return self._binop(other, operator.sub)
+
+    def _map_fields(
+        self,
+        fn: Callable[[float], float],
+    ) -> Values:
+        """Apply a unary function to each non-None field.
+
+        Parameters
+        ----------
+        fn : Callable[[float], float]
+            The function to apply to each field value.
+
+        Returns
+        -------
+        Values
+            A new Values with the function applied. None stays None.
+        """
+        return Values(
+            min=fn(self.min) if self.min is not None else None,
+            avg=fn(self.avg) if self.avg is not None else None,
+            max=fn(self.max) if self.max is not None else None,
+        )
+
+    def __neg__(self) -> Values:
+        """Negate all fields.
+
+        Returns
+        -------
+        Values
+            A new Values with all fields negated. None stays None.
+        """
+        return self._map_fields(operator.neg)
+
+    def __mul__(self, scalar: float) -> Values:
+        """Scalar multiplication.
+
+        Parameters
+        ----------
+        scalar : float
+            The scalar to multiply by.
+
+        Returns
+        -------
+        Values
+            A new Values with all fields multiplied. None stays None.
+        """
+        return self._map_fields(lambda v: v * scalar)
+
+    def __rmul__(self, scalar: float) -> Values:
+        """Reverse scalar multiplication, enables ``scalar * Values(...)``."""
+        return self.__mul__(scalar)
+
+    def approx_eq(self, other: Values, tolerance: float = 1e-9) -> bool:
+        """Floating-point tolerant comparison.
+
+        Parameters
+        ----------
+        other : Values
+            The other Values triple to compare against.
+        tolerance : float, optional
+            The absolute tolerance for comparison, by default 1e-9.
+
+        Returns
+        -------
+        bool
+            True if all fields are equal within tolerance, or both None.
+        """
+        pairs = [
+            (self.min, other.min),
+            (self.avg, other.avg),
+            (self.max, other.max),
+        ]
+        for s, o in pairs:
+            if s is None and o is None:
+                continue
+            if s is None or o is None:
+                return False
+            if abs(s - o) > tolerance:
+                return False
+        return True
+
+    def __hash__(self) -> int:
+        """Return hash based on the triple of (min, avg, max).
+
+        Returns
+        -------
+        int
+            Hash value.
+        """
+        return hash((self.min, self.avg, self.max))
+
 
 @dataclass
 class DelayPaths:
@@ -121,11 +278,54 @@ class DelayPaths:
     rise: Values | None = None
     fall: Values | None = None
 
+    _FIELD_NAMES: ClassVar[tuple[str, ...]] = (
+        "nominal",
+        "fast",
+        "slow",
+        "setup",
+        "hold",
+        "rise",
+        "fall",
+    )
+
+    _METRIC_NAMES: ClassVar[tuple[str, ...]] = ("min", "avg", "max")
+
+    def get_scalar(self, field: str = "slow", metric: str = "max") -> float | None:
+        """Extract a single float from a named field and metric.
+
+        Parameters
+        ----------
+        field : str
+            One of the ``_FIELD_NAMES`` (nominal, fast, slow, …).
+        metric : str
+            One of ``min``, ``avg``, ``max``.
+
+        Returns
+        -------
+        float | None
+            The scalar value, or None if the field or metric is None.
+
+        Raises
+        ------
+        ValueError
+            If *field* or *metric* is not a valid name.
+        """
+        if field not in self._FIELD_NAMES:
+            msg = f"Invalid field {field!r}, expected one of {self._FIELD_NAMES}"
+            raise ValueError(msg)
+        if metric not in self._METRIC_NAMES:
+            msg = f"Invalid metric {metric!r}, expected one of {self._METRIC_NAMES}"
+            raise ValueError(msg)
+        values: Values | None = getattr(self, field)
+        if values is None:
+            return None
+        return getattr(values, metric)
+
     def to_dict(self) -> dict[str, dict[str, float | None]]:
         """Return non-None delay paths as a dictionary."""
         return {
             name: val.to_dict()
-            for name in ("nominal", "fast", "slow", "setup", "hold", "rise", "fall")
+            for name in self._FIELD_NAMES
             if (val := getattr(self, name)) is not None
         }
 
@@ -136,6 +336,88 @@ class DelayPaths:
     def __getitem__(self, key: str) -> Values | None:
         """Return delay path by name."""
         return getattr(self, key)
+
+    def _binop(
+        self,
+        other: DelayPaths,
+        op: Callable[[Values, Values], Values],
+    ) -> DelayPaths:
+        """Apply a binary operation field-wise across two DelayPaths.
+
+        Parameters
+        ----------
+        other : DelayPaths
+            The other DelayPaths.
+        op : Callable[[Values, Values], Values]
+            The binary operation to apply per field.
+
+        Returns
+        -------
+        DelayPaths
+            A new DelayPaths with the operation applied. None propagates None.
+        """
+        kwargs: dict[str, Values | None] = {}
+        for name in self._FIELD_NAMES:
+            a = getattr(self, name)
+            b = getattr(other, name)
+            kwargs[name] = op(a, b) if a is not None and b is not None else None
+        return DelayPaths(**kwargs)
+
+    def __add__(self, other: DelayPaths) -> DelayPaths:
+        """Field-wise addition of two DelayPaths.
+
+        Parameters
+        ----------
+        other : DelayPaths
+            The other DelayPaths to add.
+
+        Returns
+        -------
+        DelayPaths
+            A new DelayPaths with field-wise sums. None propagates None.
+        """
+        return self._binop(other, operator.add)
+
+    def __sub__(self, other: DelayPaths) -> DelayPaths:
+        """Field-wise subtraction of two DelayPaths.
+
+        Parameters
+        ----------
+        other : DelayPaths
+            The other DelayPaths to subtract.
+
+        Returns
+        -------
+        DelayPaths
+            A new DelayPaths with field-wise differences. None propagates None.
+        """
+        return self._binop(other, operator.sub)
+
+    def approx_eq(self, other: DelayPaths, tolerance: float = 1e-9) -> bool:
+        """Floating-point tolerant comparison of two DelayPaths.
+
+        Parameters
+        ----------
+        other : DelayPaths
+            The other DelayPaths to compare against.
+        tolerance : float, optional
+            The absolute tolerance for comparison, by default 1e-9.
+
+        Returns
+        -------
+        bool
+            True if all fields are approximately equal or both None.
+        """
+        for name in self._FIELD_NAMES:
+            a = getattr(self, name)
+            b = getattr(other, name)
+            if a is None and b is None:
+                continue
+            if a is None or b is None:
+                return False
+            if not a.approx_eq(b, tolerance):
+                return False
+        return True
 
 
 @dataclass

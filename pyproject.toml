@@ -20,10 +20,14 @@ requires-python = ">=3.11"
 dependencies = [
     "lark",
     "jinja2",
+    "typer>=0.24.1",
+    "rich>=14.3.3",
+    "networkx",
 ]
 
 [project.scripts]
 sdf_timing_parse = "sdf_timing.sdfparse:main"
+sdf-timing = "sdf_timing.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/chipsalliance/python-sdf-timing"

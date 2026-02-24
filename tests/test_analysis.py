@@ -1,0 +1,144 @@
+from __future__ import annotations
+
+import pytest
+
+from sdf_timing.model import DelayPaths, SDFFile, SDFHeader, Values
+from sdf_timing.pathgraph import (
+    RankedPath,
+    TimingGraph,
+    compute_slack,
+    critical_path,
+    rank_paths,
+)
+
+
+class TestGetScalar:
+    def test_slow_max(self) -> None:
+        dp = DelayPaths(slow=Values(min=1.0, avg=2.0, max=3.0))
+        assert dp.get_scalar("slow", "max") == 3.0
+
+    def test_fast_min(self) -> None:
+        dp = DelayPaths(fast=Values(min=0.5, avg=1.0, max=1.5))
+        assert dp.get_scalar("fast", "min") == 0.5
+
+    def test_nominal_avg(self) -> None:
+        dp = DelayPaths(nominal=Values(min=1.0, avg=2.0, max=3.0))
+        assert dp.get_scalar("nominal", "avg") == 2.0
+
+    def test_none_field(self) -> None:
+        dp = DelayPaths(slow=Values(min=1.0, avg=2.0, max=3.0))
+        assert dp.get_scalar("fast", "max") is None
+
+    def test_none_metric(self) -> None:
+        dp = DelayPaths(slow=Values(min=1.0, avg=None, max=3.0))
+        assert dp.get_scalar("slow", "avg") is None
+
+    def test_invalid_field(self) -> None:
+        dp = DelayPaths()
+        with pytest.raises(ValueError, match="Invalid field"):
+            dp.get_scalar("invalid", "max")
+
+    def test_invalid_metric(self) -> None:
+        dp = DelayPaths()
+        with pytest.raises(ValueError, match="Invalid metric"):
+            dp.get_scalar("slow", "invalid")
+
+    def test_defaults(self) -> None:
+        dp = DelayPaths(slow=Values(min=1.0, avg=2.0, max=3.0))
+        assert dp.get_scalar() == 3.0
+
+
+class TestStartpointsEndpoints:
+    def test_startpoints(self, spec1_graph: TimingGraph) -> None:
+        starts = spec1_graph.startpoints()
+        assert "P1/z" in starts
+        # All startpoints have no incoming edges
+        for node in starts:
+            assert spec1_graph.predecessors(node) == []
+
+    def test_endpoints(self, spec1_graph: TimingGraph) -> None:
+        ends = spec1_graph.endpoints()
+        assert "P2/i" in ends
+        assert "P3/i" in ends
+
+    def test_startpoints_not_in_endpoints(self, spec1_graph: TimingGraph) -> None:
+        starts = spec1_graph.startpoints()
+        ends = spec1_graph.endpoints()
+        assert starts.isdisjoint(ends)
+
+    def test_empty_graph(self) -> None:
+        sdf = SDFFile(header=SDFHeader(), cells={})
+        graph = TimingGraph(sdf)
+        assert graph.startpoints() == set()
+        assert graph.endpoints() == set()
+
+
+class TestRankPaths:
+    def test_rank_paths_descending(self, spec1_graph: TimingGraph) -> None:
+        ranked = rank_paths(spec1_graph, "P1/z", "P2/i", "slow", "max")
+        assert len(ranked) == 2
+        assert isinstance(ranked[0], RankedPath)
+        assert ranked[0].scalar is not None
+        assert ranked[1].scalar is not None
+        assert ranked[0].scalar >= ranked[1].scalar
+
+    def test_rank_paths_ascending(self, spec1_graph: TimingGraph) -> None:
+        ranked = rank_paths(
+            spec1_graph, "P1/z", "P2/i", "slow", "max", descending=False
+        )
+        assert len(ranked) == 2
+        assert ranked[0].scalar is not None
+        assert ranked[1].scalar is not None
+        assert ranked[0].scalar <= ranked[1].scalar
+
+    def test_rank_paths_no_path(self, spec1_graph: TimingGraph) -> None:
+        ranked = rank_paths(spec1_graph, "P2/i", "P1/z")
+        assert ranked == []
+
+    def test_rank_paths_fast_field(self, spec1_graph: TimingGraph) -> None:
+        ranked = rank_paths(spec1_graph, "P1/z", "P2/i", "fast", "min")
+        assert len(ranked) == 2
+        for rp in ranked:
+            assert rp.scalar is not None
+
+
+class TestCriticalPath:
+    def test_critical_path(self, spec1_graph: TimingGraph) -> None:
+        cp = critical_path(spec1_graph, "P1/z", "P2/i")
+        assert cp is not None
+        assert cp.scalar is not None
+        assert len(cp.edges) > 0
+
+    def test_critical_path_is_slowest(self, spec1_graph: TimingGraph) -> None:
+        cp = critical_path(spec1_graph, "P1/z", "P2/i", "slow", "max")
+        ranked = rank_paths(spec1_graph, "P1/z", "P2/i", "slow", "max")
+        assert cp is not None
+        assert cp.scalar == ranked[0].scalar
+
+    def test_critical_path_no_path(self, spec1_graph: TimingGraph) -> None:
+        cp = critical_path(spec1_graph, "P2/i", "P1/z")
+        assert cp is None
+
+
+class TestComputeSlack:
+    def test_positive_slack(self, spec1_graph: TimingGraph) -> None:
+        result = compute_slack(spec1_graph, "P1/z", "P2/i", 10.0)
+        assert result is not None
+        assert result > 0
+
+    def test_negative_slack(self, spec1_graph: TimingGraph) -> None:
+        result = compute_slack(spec1_graph, "P1/z", "P2/i", 0.5)
+        assert result is not None
+        assert result < 0
+
+    def test_slack_value(self, spec1_graph: TimingGraph) -> None:
+        cp = critical_path(spec1_graph, "P1/z", "P2/i", "slow", "max")
+        result = compute_slack(spec1_graph, "P1/z", "P2/i", 10.0, "slow", "max")
+        assert cp is not None
+        assert cp.scalar is not None
+        assert result is not None
+        assert abs(result - (10.0 - cp.scalar)) < 1e-9
+
+    def test_slack_no_path(self, spec1_graph: TimingGraph) -> None:
+        result = compute_slack(spec1_graph, "P2/i", "P1/z", 10.0)
+        assert result is None
