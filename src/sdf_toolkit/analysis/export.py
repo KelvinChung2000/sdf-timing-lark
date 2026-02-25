@@ -1,7 +1,6 @@
 """DOT/Graphviz export for timing graphs."""
 
-
-from sdf_toolkit.analysis.pathgraph import RankedPath, TimingGraph
+from sdf_toolkit.core.pathgraph import RankedPath, TimingGraph
 
 
 def to_dot(

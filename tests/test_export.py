@@ -1,5 +1,5 @@
 from sdf_toolkit.analysis.export import to_dot
-from sdf_toolkit.analysis.pathgraph import TimingGraph, critical_path
+from sdf_toolkit.core.pathgraph import TimingGraph, critical_path
 
 
 class TestToDot:

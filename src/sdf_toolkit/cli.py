@@ -16,15 +16,6 @@ from rich.console import Console
 from rich.table import Table
 
 from sdf_toolkit.analysis.export import to_dot
-from sdf_toolkit.analysis.pathgraph import (
-    TimingGraph,
-    batch_endpoint_analysis,
-    compute_slack,
-    critical_path,
-    decompose_delay,
-    rank_paths,
-    verify_path,
-)
 from sdf_toolkit.core.model import (
     BaseEntry,
     DelayPaths,
@@ -32,6 +23,15 @@ from sdf_toolkit.core.model import (
     SDFFile,
     SDFHeader,
     Values,
+)
+from sdf_toolkit.core.pathgraph import (
+    TimingGraph,
+    batch_endpoint_analysis,
+    compute_slack,
+    critical_path,
+    decompose_delay,
+    rank_paths,
+    verify_path,
 )
 from sdf_toolkit.io.sdfparse import emit as sdf_emit
 from sdf_toolkit.parser.parser import parse_sdf

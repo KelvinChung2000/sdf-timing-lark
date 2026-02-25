@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from sdf_toolkit.analysis.pathgraph import TimingGraph
+from sdf_toolkit.core.pathgraph import TimingGraph
 from sdf_toolkit.parser.parser import parse_sdf
 
 DATA_DIR = (Path(__file__).parent / "data").resolve()

@@ -493,7 +493,7 @@ def critical_path(
     Examples
     --------
     >>> from sdf_toolkit.core.builder import SDFBuilder
-    >>> from sdf_toolkit.analysis.pathgraph import TimingGraph, critical_path
+    >>> from sdf_toolkit.core.pathgraph import TimingGraph, critical_path
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")
@@ -548,7 +548,7 @@ def compute_slack(
     Examples
     --------
     >>> from sdf_toolkit.core.builder import SDFBuilder
-    >>> from sdf_toolkit.analysis.pathgraph import TimingGraph, compute_slack
+    >>> from sdf_toolkit.core.pathgraph import TimingGraph, compute_slack
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")
@@ -623,7 +623,7 @@ def batch_endpoint_analysis(
     Examples
     --------
     >>> from sdf_toolkit.core.builder import SDFBuilder
-    >>> from sdf_toolkit.analysis.pathgraph import TimingGraph, batch_endpoint_analysis
+    >>> from sdf_toolkit.core.pathgraph import TimingGraph, batch_endpoint_analysis
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

@@ -1,13 +1,13 @@
 import networkx as nx
 import pytest
 
-from sdf_toolkit.analysis.pathgraph import (
+from sdf_toolkit.core.model import DelayPaths, SDFFile, SDFHeader, Values
+from sdf_toolkit.core.pathgraph import (
     TimingGraph,
     VerificationResult,
     decompose_delay,
     verify_path,
 )
-from sdf_toolkit.core.model import DelayPaths, SDFFile, SDFHeader, Values
 
 EXPECTED_NODES = {
     "P1/z",

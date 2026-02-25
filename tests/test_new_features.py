@@ -2,7 +2,7 @@ import pytest
 from conftest import DATA_DIR
 
 from sdf_toolkit.analysis.diff import diff
-from sdf_toolkit.analysis.pathgraph import batch_endpoint_analysis
+from sdf_toolkit.core.pathgraph import batch_endpoint_analysis
 from sdf_toolkit.analysis.query import query
 from sdf_toolkit.analysis.report import generate_report
 from sdf_toolkit.analysis.stats import compute_stats

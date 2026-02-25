@@ -5,14 +5,14 @@ from io import StringIO
 from rich.console import Console
 from rich.table import Table
 
-from sdf_toolkit.analysis.pathgraph import (
+from sdf_toolkit.analysis.stats import compute_stats
+from sdf_toolkit.analysis.validate import validate
+from sdf_toolkit.core.model import SDFFile
+from sdf_toolkit.core.pathgraph import (
     TimingGraph,
     batch_endpoint_analysis,
     compute_slack,
 )
-from sdf_toolkit.analysis.stats import compute_stats
-from sdf_toolkit.analysis.validate import validate
-from sdf_toolkit.core.model import SDFFile
 
 
 def _format_float(value: float | None) -> str:
