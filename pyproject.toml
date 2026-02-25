@@ -1,15 +1,11 @@
-[build-system]
-requires = ["setuptools>=42", "setuptools-scm"]
-build-backend = "setuptools.build_meta"
-
 [project]
 name = "sdf_timing"
 dynamic = ["version"]
 description = "Python library for working Standard Delay Format (SDF) Timing Annotation files."
 readme = "README.md"
-license = {text = "Apache-2.0"}
+license = { text = "Apache-2.0" }
 authors = [
-    {name = "F4PGA Authors", email = "f4pga-wg@lists.chipsalliance.org"},
+    { name = "F4PGA Authors", email = "f4pga-wg@lists.chipsalliance.org" },
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -17,13 +13,16 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 requires-python = ">=3.11"
-dependencies = [
-    "lark",
-    "jinja2",
-    "typer>=0.24.1",
-    "rich>=14.3.3",
-    "networkx",
-]
+dependencies = ["lark", "jinja2", "typer>=0.24.1", "rich>=14.3.3", "networkx"]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+version_scheme = "post-release"
+local_scheme = "no-local-version"
 
 [project.scripts]
 sdf_timing_parse = "sdf_timing.io.sdfparse:main"
@@ -33,18 +32,8 @@ sdf-timing = "sdf_timing.cli:main"
 Homepage = "https://github.com/chipsalliance/python-sdf-timing"
 
 [project.optional-dependencies]
-dev = [
-    "pytest",
-    "ruff",
-    "pre-commit",
-    "pytest-cov",
-    "ty",
-]
-docs = [
-    "sphinx",
-    "sphinx-rtd-theme",
-    "myst-parser",
-]
+dev = ["pytest", "ruff", "pre-commit", "pytest-cov", "ty"]
+docs = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
 
 [tool.setuptools_scm]
 version_scheme = "post-release"
@@ -59,16 +48,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = [
-    "--doctest-modules",
-    "--cov=sdf_timing",
-    "--cov-report=term-missing",
-]
+addopts = ["--doctest-modules", "--cov=sdf_timing", "--cov-report=term-missing"]
 
 [dependency-groups]
-dev = [
-    "ty>=0.0.18",
-]
+dev = ["ty>=0.0.18"]
 
 [tool.ty.environment]
 python-version = "3.11"
