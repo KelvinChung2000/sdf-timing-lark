@@ -1,15 +1,17 @@
 """Programmatic builder for constructing SDFFile objects."""
 
-from __future__ import annotations
+from typing import TypeVar
 
 from sdf_timing.core.model import (
     BaseEntry,
     CellsDict,
     DelayPaths,
     Device,
+    EdgeType,
     Hold,
     Interconnect,
     Iopath,
+    PathConstraint,
     Port,
     Recovery,
     Removal,
@@ -17,34 +19,165 @@ from sdf_timing.core.model import (
     SDFHeader,
     Setup,
     SetupHold,
+    TimingCheck,
     Values,
     Width,
 )
-from sdf_timing.core.utils import store_entry
+
+_TC = TypeVar("_TC", bound=TimingCheck)
+_BE = TypeVar("_BE", bound=BaseEntry)
+
+# Delays can be passed as a pre-built DelayPaths or as a nested dict.
+DelaysInput = DelayPaths | dict[str, dict[str, float | None]]
 
 
-def _build_delay_paths(
-    delays: dict[str, dict[str, float | None]],
-) -> DelayPaths:
-    """Convert a nested delays dict into a DelayPaths dataclass.
-
-    Parameters
-    ----------
-    delays : dict[str, dict[str, float | None]]
-        Mapping of delay field names (e.g. "nominal", "fast", "slow") to
-        dicts with keys "min", "avg", "max".
-
-    Returns
-    -------
-    DelayPaths
-        A populated DelayPaths instance.
-    """
+def _resolve_delays(delays: DelaysInput) -> DelayPaths:
+    """Accept DelayPaths passthrough or convert from nested dict."""
+    if isinstance(delays, DelayPaths):
+        return delays
     return DelayPaths(
         **{
             name: Values(**delays[name])
             for name in DelayPaths._FIELD_NAMES  # noqa: SLF001
             if name in delays
         }
+    )
+
+
+# ── Entry factory functions ─────────────────────────────────────────
+
+
+def _make_two_pin_entry(
+    cls: type[_BE],
+    prefix: str,
+    from_pin: str,
+    to_pin: str,
+    delays: DelaysInput,
+    *,
+    from_pin_edge: EdgeType | None = None,
+    to_pin_edge: EdgeType | None = None,
+    **extra: object,
+) -> _BE:
+    """Shared constructor for two-pin delay entries."""
+    return cls(
+        name=f"{prefix}_{from_pin}_{to_pin}",
+        from_pin=from_pin,
+        to_pin=to_pin,
+        from_pin_edge=from_pin_edge,
+        to_pin_edge=to_pin_edge,
+        delay_paths=_resolve_delays(delays),
+        **extra,
+    )
+
+
+def _make_single_pin_entry(
+    cls: type[_BE],
+    prefix: str,
+    pin: str,
+    delays: DelaysInput,
+) -> _BE:
+    """Shared constructor for single-pin delay entries (port, device)."""
+    return cls(
+        name=f"{prefix}_{pin}",
+        from_pin=pin,
+        to_pin=pin,
+        delay_paths=_resolve_delays(delays),
+    )
+
+
+def make_iopath(
+    from_pin: str,
+    to_pin: str,
+    delays: DelaysInput,
+    *,
+    from_pin_edge: EdgeType | None = None,
+    to_pin_edge: EdgeType | None = None,
+) -> Iopath:
+    """Create an IOPATH delay entry."""
+    return _make_two_pin_entry(
+        Iopath,
+        "iopath",
+        from_pin,
+        to_pin,
+        delays,
+        from_pin_edge=from_pin_edge,
+        to_pin_edge=to_pin_edge,
+    )
+
+
+def make_interconnect(
+    from_pin: str,
+    to_pin: str,
+    delays: DelaysInput,
+    *,
+    from_pin_edge: EdgeType | None = None,
+    to_pin_edge: EdgeType | None = None,
+) -> Interconnect:
+    """Create an INTERCONNECT delay entry."""
+    return _make_two_pin_entry(
+        Interconnect,
+        "interconnect",
+        from_pin,
+        to_pin,
+        delays,
+        from_pin_edge=from_pin_edge,
+        to_pin_edge=to_pin_edge,
+    )
+
+
+def make_port(pin: str, delays: DelaysInput) -> Port:
+    """Create a PORT delay entry."""
+    return _make_single_pin_entry(Port, "port", pin, delays)
+
+
+def make_device(pin: str, delays: DelaysInput) -> Device:
+    """Create a DEVICE delay entry."""
+    return _make_single_pin_entry(Device, "device", pin, delays)
+
+
+def make_timing_check(
+    cls: type[_TC],
+    from_pin: str,
+    to_pin: str,
+    delays: DelaysInput,
+    *,
+    from_pin_edge: EdgeType | None = None,
+    to_pin_edge: EdgeType | None = None,
+    is_cond: bool = False,
+    cond_equation: str | None = None,
+) -> _TC:
+    """Create a timing check entry of the given type."""
+    return cls(
+        name=f"{cls.__name__.lower()}_{from_pin}_{to_pin}",
+        is_timing_check=True,
+        is_cond=is_cond,
+        cond_equation=cond_equation,
+        from_pin=from_pin,
+        to_pin=to_pin,
+        from_pin_edge=from_pin_edge,
+        to_pin_edge=to_pin_edge,
+        delay_paths=_resolve_delays(delays),
+    )
+
+
+def make_path_constraint(
+    from_pin: str,
+    to_pin: str,
+    delays: DelaysInput,
+    *,
+    from_pin_edge: EdgeType | None = None,
+    to_pin_edge: EdgeType | None = None,
+) -> PathConstraint:
+    """Create a path constraint entry."""
+    return _make_two_pin_entry(
+        PathConstraint,
+        "pathconstraint",
+        from_pin,
+        to_pin,
+        delays,
+        from_pin_edge=from_pin_edge,
+        to_pin_edge=to_pin_edge,
+        is_timing_env=True,
     )
 
 
@@ -59,7 +192,6 @@ class SDFBuilder:
     ...     .set_header(sdfversion="3.0", design="top")
     ...     .add_cell("BUF", "buf0")
     ...         .add_iopath("A", "Y", {"nominal": {"min": 1.0, "avg": 2.0, "max": 3.0}})
-    ...         .done()
     ...     .build()
     ... )
     >>> sdf.header.sdfversion
@@ -72,7 +204,7 @@ class SDFBuilder:
         self._header_kwargs: dict[str, str] = {}
         self._cells: CellsDict = {}
 
-    def set_header(self, **kwargs: str) -> SDFBuilder:
+    def set_header(self, **kwargs: str) -> "SDFBuilder":
         """Set header fields on the SDF file.
 
         Parameters
@@ -89,7 +221,7 @@ class SDFBuilder:
         self._header_kwargs.update(kwargs)
         return self
 
-    def add_cell(self, cell_type: str, instance: str) -> CellBuilder:
+    def add_cell(self, cell_type: str, instance: str) -> "CellBuilder":
         """Start building a cell and return a CellBuilder.
 
         Parameters
@@ -104,28 +236,9 @@ class SDFBuilder:
         CellBuilder
             A new CellBuilder bound to this SDFBuilder.
         """
-        return CellBuilder(self, cell_type, instance)
-
-    def _register_cell(
-        self,
-        cell_type: str,
-        instance: str,
-        entries: dict[str, BaseEntry],
-    ) -> None:
-        """Register a completed cell's entries.
-
-        Called internally by ``CellBuilder.done()``.
-
-        Parameters
-        ----------
-        cell_type : str
-            The cell type name.
-        instance : str
-            The cell instance name.
-        entries : dict[str, BaseEntry]
-            The timing entries for this cell instance.
-        """
-        self._cells.setdefault(cell_type, {})[instance] = entries
+        cell_instances = self._cells.setdefault(cell_type, {})
+        entries: dict[str, BaseEntry] = cell_instances.setdefault(instance, {})
+        return CellBuilder(self, entries)
 
     def build(self) -> SDFFile:
         """Build and return the completed SDFFile.
@@ -144,23 +257,22 @@ class SDFBuilder:
 class CellBuilder:
     """Builder for a single cell's timing entries.
 
-    Provides fluent methods to add delay and timing check entries,
-    then call ``done()`` to return to the parent SDFBuilder.
+    Entries are written directly into the parent SDFBuilder's cell storage.
+    Use ``add_cell()`` or ``build()`` to move on after adding entries.
     """
 
     def __init__(
         self,
         parent: SDFBuilder,
-        cell_type: str,
-        instance: str,
+        entries: dict[str, BaseEntry],
     ) -> None:
         self._parent = parent
-        self._cell_type = cell_type
-        self._instance = instance
-        self._entries: dict[str, BaseEntry] = {}
+        self._entries = entries
 
-    def _add_entry(self, entry: BaseEntry) -> CellBuilder:
-        """Store an entry and return self for chaining.
+    def add_entry(self, entry: BaseEntry) -> "CellBuilder":
+        """Store a pre-built entry and return self for chaining.
+
+        On name collision, appends _1, _2, etc. to ensure unique keys.
 
         Parameters
         ----------
@@ -172,15 +284,51 @@ class CellBuilder:
         CellBuilder
             This builder instance for method chaining.
         """
-        store_entry(self._entries, entry)
+        base_name = entry.name
+        key = base_name
+        if key in self._entries:
+            counter = 1
+            while f"{base_name}_{counter}" in self._entries:
+                counter += 1
+            key = f"{base_name}_{counter}"
+            entry.name = key
+        self._entries[key] = entry
         return self
+
+    def add_cell(self, cell_type: str, instance: str) -> "CellBuilder":
+        """Start a new cell, delegating to the parent SDFBuilder.
+
+        Parameters
+        ----------
+        cell_type : str
+            The cell type name.
+        instance : str
+            The cell instance name.
+
+        Returns
+        -------
+        CellBuilder
+            A new CellBuilder for the new cell.
+        """
+        return self._parent.add_cell(cell_type, instance)
+
+    def set_header(self, **kwargs: str) -> "SDFBuilder":
+        """Set header fields, delegating to the parent SDFBuilder."""
+        return self._parent.set_header(**kwargs)
+
+    def build(self) -> SDFFile:
+        """Build the SDFFile, delegating to the parent SDFBuilder."""
+        return self._parent.build()
 
     def add_iopath(
         self,
         from_pin: str,
         to_pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+    ) -> "CellBuilder":
         """Add an IOPATH delay entry.
 
         Parameters
@@ -189,8 +337,12 @@ class CellBuilder:
             The input pin name.
         to_pin : str
             The output pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name (nominal, fast, slow, etc.).
+        delays : DelaysInput
+            Delay values as DelayPaths or a dict keyed by field name.
+        from_pin_edge : EdgeType | None
+            Optional edge type for the input pin.
+        to_pin_edge : EdgeType | None
+            Optional edge type for the output pin.
 
         Returns
         -------
@@ -206,19 +358,19 @@ class CellBuilder:
         ...         .add_iopath("A", "Y", {
         ...             "nominal": {"min": 0.5, "avg": 1.0, "max": 1.5},
         ...         })
-        ...         .done()
         ...     .build()
         ... )
         >>> entry = sdf.cells["INV"]["i0"]["iopath_A_Y"]
         >>> entry.delay_paths.nominal.max
         1.5
         """
-        return self._add_entry(
-            Iopath(
-                name=f"iopath_{from_pin}_{to_pin}",
-                from_pin=from_pin,
-                to_pin=to_pin,
-                delay_paths=_build_delay_paths(delays),
+        return self.add_entry(
+            make_iopath(
+                from_pin,
+                to_pin,
+                delays,
+                from_pin_edge=from_pin_edge,
+                to_pin_edge=to_pin_edge,
             )
         )
 
@@ -226,8 +378,11 @@ class CellBuilder:
         self,
         from_pin: str,
         to_pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+    ) -> "CellBuilder":
         """Add an interconnect delay entry.
 
         Parameters
@@ -236,76 +391,118 @@ class CellBuilder:
             The source pin name.
         to_pin : str
             The destination pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
+        delays : DelaysInput
+            Delay values as DelayPaths or a dict keyed by field name.
+        from_pin_edge : EdgeType | None
+            Optional edge type for the source pin.
+        to_pin_edge : EdgeType | None
+            Optional edge type for the destination pin.
 
         Returns
         -------
         CellBuilder
             This builder instance for method chaining.
         """
-        return self._add_entry(
-            Interconnect(
-                name=f"interconnect_{from_pin}_{to_pin}",
-                from_pin=from_pin,
-                to_pin=to_pin,
-                delay_paths=_build_delay_paths(delays),
+        return self.add_entry(
+            make_interconnect(
+                from_pin,
+                to_pin,
+                delays,
+                from_pin_edge=from_pin_edge,
+                to_pin_edge=to_pin_edge,
             )
         )
 
     def add_port(
         self,
         pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
+        delays: DelaysInput,
+    ) -> "CellBuilder":
         """Add a port delay entry.
 
         Parameters
         ----------
         pin : str
             The port pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
+        delays : DelaysInput
+            Delay values as DelayPaths or a dict keyed by field name.
 
         Returns
         -------
         CellBuilder
             This builder instance for method chaining.
         """
-        return self._add_entry(
-            Port(
-                name=f"port_{pin}",
-                from_pin=pin,
-                to_pin=pin,
-                delay_paths=_build_delay_paths(delays),
-            )
-        )
+        return self.add_entry(make_port(pin, delays))
 
     def add_device(
         self,
         pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
+        delays: DelaysInput,
+    ) -> "CellBuilder":
         """Add a device delay entry.
 
         Parameters
         ----------
         pin : str
             The device pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
+        delays : DelaysInput
+            Delay values as DelayPaths or a dict keyed by field name.
 
         Returns
         -------
         CellBuilder
             This builder instance for method chaining.
         """
-        return self._add_entry(
-            Device(
-                name=f"device_{pin}",
-                from_pin=pin,
-                to_pin=pin,
-                delay_paths=_build_delay_paths(delays),
+        return self.add_entry(make_device(pin, delays))
+
+    def _add_timing_check(
+        self,
+        cls: type[_TC],
+        from_pin: str,
+        to_pin: str,
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+        is_cond: bool = False,
+        cond_equation: str | None = None,
+    ) -> "CellBuilder":
+        """Add a timing check entry of the given type.
+
+        Parameters
+        ----------
+        cls : type[TimingCheck]
+            The timing check dataclass (Setup, Hold, etc.).
+        from_pin : str
+            The data/signal pin name.
+        to_pin : str
+            The clock/reference pin name.
+        delays : DelaysInput
+            Delay values as DelayPaths or a dict keyed by field name.
+        from_pin_edge : EdgeType | None
+            Optional edge type for the from pin.
+        to_pin_edge : EdgeType | None
+            Optional edge type for the to pin.
+        is_cond : bool
+            Whether this is a conditional timing check.
+        cond_equation : str | None
+            The condition equation string.
+
+        Returns
+        -------
+        CellBuilder
+            This builder instance for method chaining.
+        """
+        return self.add_entry(
+            make_timing_check(
+                cls,
+                from_pin,
+                to_pin,
+                delays,
+                from_pin_edge=from_pin_edge,
+                to_pin_edge=to_pin_edge,
+                is_cond=is_cond,
+                cond_equation=cond_equation,
             )
         )
 
@@ -313,204 +510,173 @@ class CellBuilder:
         self,
         from_pin: str,
         to_pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
-        """Add a setup timing check entry.
-
-        Parameters
-        ----------
-        from_pin : str
-            The data pin name.
-        to_pin : str
-            The clock pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
-
-        Returns
-        -------
-        CellBuilder
-            This builder instance for method chaining.
-        """
-        return self._add_entry(
-            Setup(
-                name=f"setup_{from_pin}_{to_pin}",
-                from_pin=from_pin,
-                to_pin=to_pin,
-                is_timing_check=True,
-                delay_paths=_build_delay_paths(delays),
-            )
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+        is_cond: bool = False,
+        cond_equation: str | None = None,
+    ) -> "CellBuilder":
+        """Add a setup timing check entry."""
+        return self._add_timing_check(
+            Setup,
+            from_pin,
+            to_pin,
+            delays,
+            from_pin_edge=from_pin_edge,
+            to_pin_edge=to_pin_edge,
+            is_cond=is_cond,
+            cond_equation=cond_equation,
         )
 
     def add_hold(
         self,
         from_pin: str,
         to_pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
-        """Add a hold timing check entry.
-
-        Parameters
-        ----------
-        from_pin : str
-            The data pin name.
-        to_pin : str
-            The clock pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
-
-        Returns
-        -------
-        CellBuilder
-            This builder instance for method chaining.
-        """
-        return self._add_entry(
-            Hold(
-                name=f"hold_{from_pin}_{to_pin}",
-                from_pin=from_pin,
-                to_pin=to_pin,
-                is_timing_check=True,
-                delay_paths=_build_delay_paths(delays),
-            )
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+        is_cond: bool = False,
+        cond_equation: str | None = None,
+    ) -> "CellBuilder":
+        """Add a hold timing check entry."""
+        return self._add_timing_check(
+            Hold,
+            from_pin,
+            to_pin,
+            delays,
+            from_pin_edge=from_pin_edge,
+            to_pin_edge=to_pin_edge,
+            is_cond=is_cond,
+            cond_equation=cond_equation,
         )
 
     def add_removal(
         self,
         from_pin: str,
         to_pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
-        """Add a removal timing check entry.
-
-        Parameters
-        ----------
-        from_pin : str
-            The signal pin name.
-        to_pin : str
-            The clock pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
-
-        Returns
-        -------
-        CellBuilder
-            This builder instance for method chaining.
-        """
-        return self._add_entry(
-            Removal(
-                name=f"removal_{from_pin}_{to_pin}",
-                from_pin=from_pin,
-                to_pin=to_pin,
-                is_timing_check=True,
-                delay_paths=_build_delay_paths(delays),
-            )
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+        is_cond: bool = False,
+        cond_equation: str | None = None,
+    ) -> "CellBuilder":
+        """Add a removal timing check entry."""
+        return self._add_timing_check(
+            Removal,
+            from_pin,
+            to_pin,
+            delays,
+            from_pin_edge=from_pin_edge,
+            to_pin_edge=to_pin_edge,
+            is_cond=is_cond,
+            cond_equation=cond_equation,
         )
 
     def add_recovery(
         self,
         from_pin: str,
         to_pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
-        """Add a recovery timing check entry.
-
-        Parameters
-        ----------
-        from_pin : str
-            The signal pin name.
-        to_pin : str
-            The clock pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
-
-        Returns
-        -------
-        CellBuilder
-            This builder instance for method chaining.
-        """
-        return self._add_entry(
-            Recovery(
-                name=f"recovery_{from_pin}_{to_pin}",
-                from_pin=from_pin,
-                to_pin=to_pin,
-                is_timing_check=True,
-                delay_paths=_build_delay_paths(delays),
-            )
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+        is_cond: bool = False,
+        cond_equation: str | None = None,
+    ) -> "CellBuilder":
+        """Add a recovery timing check entry."""
+        return self._add_timing_check(
+            Recovery,
+            from_pin,
+            to_pin,
+            delays,
+            from_pin_edge=from_pin_edge,
+            to_pin_edge=to_pin_edge,
+            is_cond=is_cond,
+            cond_equation=cond_equation,
         )
 
     def add_setuphold(
         self,
         from_pin: str,
         to_pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
-        """Add a setuphold combined timing check entry.
-
-        Parameters
-        ----------
-        from_pin : str
-            The data pin name.
-        to_pin : str
-            The clock pin name.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
-
-        Returns
-        -------
-        CellBuilder
-            This builder instance for method chaining.
-        """
-        return self._add_entry(
-            SetupHold(
-                name=f"setuphold_{from_pin}_{to_pin}",
-                from_pin=from_pin,
-                to_pin=to_pin,
-                is_timing_check=True,
-                delay_paths=_build_delay_paths(delays),
-            )
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+        is_cond: bool = False,
+        cond_equation: str | None = None,
+    ) -> "CellBuilder":
+        """Add a setuphold combined timing check entry."""
+        return self._add_timing_check(
+            SetupHold,
+            from_pin,
+            to_pin,
+            delays,
+            from_pin_edge=from_pin_edge,
+            to_pin_edge=to_pin_edge,
+            is_cond=is_cond,
+            cond_equation=cond_equation,
         )
 
     def add_width(
         self,
         pin: str,
-        delays: dict[str, dict[str, float | None]],
-    ) -> CellBuilder:
-        """Add a width timing check entry.
+        delays: DelaysInput,
+        *,
+        pin_edge: EdgeType | None = None,
+        is_cond: bool = False,
+        cond_equation: str | None = None,
+    ) -> "CellBuilder":
+        """Add a width timing check entry."""
+        return self._add_timing_check(
+            Width,
+            pin,
+            pin,
+            delays,
+            from_pin_edge=pin_edge,
+            to_pin_edge=pin_edge,
+            is_cond=is_cond,
+            cond_equation=cond_equation,
+        )
+
+    def add_path_constraint(
+        self,
+        from_pin: str,
+        to_pin: str,
+        delays: DelaysInput,
+        *,
+        from_pin_edge: EdgeType | None = None,
+        to_pin_edge: EdgeType | None = None,
+    ) -> "CellBuilder":
+        """Add a path constraint entry.
 
         Parameters
         ----------
-        pin : str
-            The pin name to check width on.
-        delays : dict[str, dict[str, float | None]]
-            Delay values keyed by field name.
+        from_pin : str
+            The source pin name.
+        to_pin : str
+            The destination pin name.
+        delays : DelaysInput
+            Delay values as DelayPaths or a dict keyed by field name.
+        from_pin_edge : EdgeType | None
+            Optional edge type for the source pin.
+        to_pin_edge : EdgeType | None
+            Optional edge type for the destination pin.
 
         Returns
         -------
         CellBuilder
             This builder instance for method chaining.
         """
-        return self._add_entry(
-            Width(
-                name=f"width_{pin}_{pin}",
-                from_pin=pin,
-                to_pin=pin,
-                is_timing_check=True,
-                delay_paths=_build_delay_paths(delays),
+        return self.add_entry(
+            make_path_constraint(
+                from_pin,
+                to_pin,
+                delays,
+                from_pin_edge=from_pin_edge,
+                to_pin_edge=to_pin_edge,
             )
         )
-
-    def done(self) -> SDFBuilder:
-        """Finalize this cell and return to the parent SDFBuilder.
-
-        Registers all accumulated entries with the parent builder.
-
-        Returns
-        -------
-        SDFBuilder
-            The parent builder instance for continued chaining.
-        """
-        self._parent._register_cell(  # noqa: SLF001
-            self._cell_type,
-            self._instance,
-            self._entries,
-        )
-        return self._parent

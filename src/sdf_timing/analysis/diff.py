@@ -1,7 +1,5 @@
 """Compare two SDF files and report differences."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 
 from sdf_timing.core.model import DelayPaths, SDFFile, Values
@@ -266,7 +264,6 @@ def diff(
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> b = (
@@ -276,12 +273,10 @@ def diff(
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 5.0},
     ...         })
-    ...         .done()
     ...     .add_cell("INV", "i0")
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> result = diff(a, b)

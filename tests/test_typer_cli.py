@@ -1,15 +1,10 @@
-from __future__ import annotations
-
 import json
-from typing import TYPE_CHECKING
+from pathlib import Path
 
 from conftest import DATA_DIR
 from typer.testing import CliRunner
 
 from sdf_timing.cli import app
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 runner = CliRunner()
 

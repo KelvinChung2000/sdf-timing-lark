@@ -1,7 +1,5 @@
 """Structural and semantic validation for SDF files."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from sdf_timing.core.model import DelayPaths, EntryType, SDFFile, Values
@@ -195,7 +193,6 @@ def validate(sdf: SDFFile) -> list[LintIssue]:
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> issues = validate(sdf)
@@ -210,7 +207,6 @@ def validate(sdf: SDFFile) -> list[LintIssue]:
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> issues = validate(sdf_no_ts)

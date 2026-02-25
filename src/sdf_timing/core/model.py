@@ -1,14 +1,10 @@
 """Data models for SDF timing specifications."""
 
-from __future__ import annotations
-
 import operator
+from collections.abc import Callable, ItemsView, KeysView, ValuesView
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, ClassVar
-
-if TYPE_CHECKING:
-    from collections.abc import Callable, ItemsView, KeysView, ValuesView
+from typing import Any, ClassVar
 
 
 class EntryType(StrEnum):
@@ -109,9 +105,9 @@ class Values:
 
     def _binop(
         self,
-        other: Values,
+        other: "Values",
         op: Callable[[float, float], float],
-    ) -> Values:
+    ) -> "Values":
         """Apply a binary operation element-wise.
 
         Parameters
@@ -142,7 +138,7 @@ class Values:
             max=_apply(self.max, other.max),
         )
 
-    def __add__(self, other: Values) -> Values:
+    def __add__(self, other: "Values") -> "Values":
         """Element-wise addition of two Values triples.
 
         Parameters
@@ -157,7 +153,7 @@ class Values:
         """
         return self._binop(other, operator.add)
 
-    def __sub__(self, other: Values) -> Values:
+    def __sub__(self, other: "Values") -> "Values":
         """Element-wise subtraction of two Values triples.
 
         Parameters
@@ -176,7 +172,7 @@ class Values:
     def _map_fields(
         self,
         fn: Callable[[float], float],
-    ) -> Values:
+    ) -> "Values":
         """Apply a unary function to each non-None field.
 
         Parameters
@@ -195,7 +191,7 @@ class Values:
             max=fn(self.max) if self.max is not None else None,
         )
 
-    def __neg__(self) -> Values:
+    def __neg__(self) -> "Values":
         """Negate all fields.
 
         Returns
@@ -205,7 +201,7 @@ class Values:
         """
         return self._map_fields(operator.neg)
 
-    def __mul__(self, scalar: float) -> Values:
+    def __mul__(self, scalar: float) -> "Values":
         """Scalar multiplication.
 
         Parameters
@@ -220,11 +216,11 @@ class Values:
         """
         return self._map_fields(lambda v: v * scalar)
 
-    def __rmul__(self, scalar: float) -> Values:
+    def __rmul__(self, scalar: float) -> "Values":
         """Reverse scalar multiplication, enables ``scalar * Values(...)``."""
         return self.__mul__(scalar)
 
-    def approx_eq(self, other: Values, tolerance: float = 1e-9) -> bool:
+    def approx_eq(self, other: "Values", tolerance: float = 1e-9) -> bool:
         """Floating-point tolerant comparison.
 
         Parameters
@@ -339,9 +335,9 @@ class DelayPaths:
 
     def _binop(
         self,
-        other: DelayPaths,
+        other: "DelayPaths",
         op: Callable[[Values, Values], Values],
-    ) -> DelayPaths:
+    ) -> "DelayPaths":
         """Apply a binary operation field-wise across two DelayPaths.
 
         Parameters
@@ -363,7 +359,7 @@ class DelayPaths:
             kwargs[name] = op(a, b) if a is not None and b is not None else None
         return DelayPaths(**kwargs)
 
-    def __add__(self, other: DelayPaths) -> DelayPaths:
+    def __add__(self, other: "DelayPaths") -> "DelayPaths":
         """Field-wise addition of two DelayPaths.
 
         Parameters
@@ -378,7 +374,7 @@ class DelayPaths:
         """
         return self._binop(other, operator.add)
 
-    def __sub__(self, other: DelayPaths) -> DelayPaths:
+    def __sub__(self, other: "DelayPaths") -> "DelayPaths":
         """Field-wise subtraction of two DelayPaths.
 
         Parameters
@@ -393,7 +389,7 @@ class DelayPaths:
         """
         return self._binop(other, operator.sub)
 
-    def approx_eq(self, other: DelayPaths, tolerance: float = 1e-9) -> bool:
+    def approx_eq(self, other: "DelayPaths", tolerance: float = 1e-9) -> bool:
         """Floating-point tolerant comparison of two DelayPaths.
 
         Parameters

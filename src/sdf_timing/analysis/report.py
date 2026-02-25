@@ -1,9 +1,6 @@
 """Generate human-readable timing reports from SDF files."""
 
-from __future__ import annotations
-
 from io import StringIO
-from typing import TYPE_CHECKING
 
 from rich.console import Console
 from rich.table import Table
@@ -15,9 +12,7 @@ from sdf_timing.analysis.pathgraph import (
 )
 from sdf_timing.analysis.stats import compute_stats
 from sdf_timing.analysis.validate import validate
-
-if TYPE_CHECKING:
-    from sdf_timing.core.model import SDFFile
+from sdf_timing.core.model import SDFFile
 
 
 def _format_float(value: float | None) -> str:
@@ -79,7 +74,6 @@ def generate_report(
     ...         .add_interconnect("a/Y", "b/A", {
     ...             "slow": {"min": 0.5, "avg": 1.0, "max": 1.5},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> report = generate_report(sdf)

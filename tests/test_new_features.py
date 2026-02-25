@@ -69,7 +69,6 @@ class TestBuilder:
             .set_header(sdfversion="3.0", timescale="1ns")
             .add_cell("BUF", "buf0")
             .add_iopath("A", "Y", {"nominal": {"min": 1.0, "avg": 2.0, "max": 3.0}})
-            .done()
             .build()
         )
         assert sdf.header.sdfversion == "3.0"
@@ -83,10 +82,8 @@ class TestBuilder:
             SDFBuilder()
             .add_cell("BUF", "b0")
             .add_iopath("A", "Y", {"nominal": {"min": 1.0, "avg": 1.0, "max": 1.0}})
-            .done()
             .add_cell("INV", "i0")
             .add_iopath("A", "Z", {"nominal": {"min": 2.0, "avg": 2.0, "max": 2.0}})
-            .done()
             .build()
         )
         assert len(sdf.cells) == 2
@@ -97,7 +94,6 @@ class TestBuilder:
             .add_cell("BUF", "b0")
             .add_iopath("A", "Y", {"nominal": {"min": 1.0, "avg": 1.0, "max": 1.0}})
             .add_iopath("A", "Y", {"nominal": {"min": 2.0, "avg": 2.0, "max": 2.0}})
-            .done()
             .build()
         )
         entries = sdf.cells["BUF"]["b0"]
@@ -110,7 +106,6 @@ class TestBuilder:
             .add_cell("FF", "ff0")
             .add_setup("D", "CLK", {"nominal": {"min": 0.5, "avg": 0.5, "max": 0.5}})
             .add_hold("D", "CLK", {"nominal": {"min": 0.3, "avg": 0.3, "max": 0.3}})
-            .done()
             .build()
         )
         entries = sdf.cells["FF"]["ff0"]
@@ -132,7 +127,7 @@ class TestBuilder:
             .add_setuphold("D", "CLK", delays)
             .add_width("CLK", delays)
         )
-        sdf = builder.done().build()
+        sdf = builder.build()
         assert len(sdf.cells["TOP"]["top0"]) == 10
 
 

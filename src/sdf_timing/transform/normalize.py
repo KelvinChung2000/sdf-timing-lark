@@ -1,7 +1,5 @@
 """Timescale-aware delay normalization for SDF files."""
 
-from __future__ import annotations
-
 import copy
 
 from sdf_timing.core.model import DelayPaths, SDFFile, Values
@@ -39,7 +37,6 @@ def normalize_delays(sdf: SDFFile, target_timescale: str) -> SDFFile:
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> result = normalize_delays(sdf, "1ns")

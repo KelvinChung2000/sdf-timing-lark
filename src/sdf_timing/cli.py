@@ -5,8 +5,6 @@ display file summaries, compose path delays, verify expected delays,
 and decompose delay segments.
 """
 
-from __future__ import annotations
-
 import json
 from collections import Counter
 from enum import StrEnum

@@ -22,18 +22,13 @@ function here delegates to :func:`sdf_timing.parser.parse_sdf` for
 backward compatibility.
 """
 
-from __future__ import annotations
-
 import json
 import sys
 from pathlib import Path
-from typing import TYPE_CHECKING
 
+from sdf_timing.core.model import SDFFile
 from sdf_timing.io import writer
 from sdf_timing.parser.parser import parse_sdf
-
-if TYPE_CHECKING:
-    from sdf_timing.core.model import SDFFile
 
 
 def emit(input: SDFFile, timescale: str = "1ps") -> str:  # noqa: A002

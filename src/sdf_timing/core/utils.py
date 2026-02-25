@@ -16,32 +16,9 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-"""Utility functions for SDF entry storage and timescale conversion."""
-
-from __future__ import annotations
+"""Utility functions for SDF timescale conversion."""
 
 import re
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from sdf_timing.core.model import BaseEntry
-
-
-def store_entry(cell_dict: dict[str, BaseEntry], entry: BaseEntry) -> str:
-    """Store entry in cell dict, appending _N suffix on name collision.
-
-    The first entry keeps its base name. Subsequent collisions get _1, _2, etc.
-    """
-    base_name = entry.name
-    key = base_name
-    if key in cell_dict:
-        counter = 1
-        while f"{base_name}_{counter}" in cell_dict:
-            counter += 1
-        key = f"{base_name}_{counter}"
-        entry.name = key
-    cell_dict[key] = entry
-    return key
 
 
 def get_scale_fs(timescale: str) -> int:

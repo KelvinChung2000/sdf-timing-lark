@@ -1,7 +1,5 @@
 """SDF parse tree transformer that converts Lark trees into data structures."""
 
-from __future__ import annotations
-
 from typing import TypeVar
 
 from lark import Token, Transformer, v_args
@@ -27,7 +25,6 @@ from sdf_timing.core.model import (
     Values,
     Width,
 )
-from sdf_timing.core.utils import store_entry
 
 _TC = TypeVar("_TC", bound=TimingCheck)
 
@@ -487,10 +484,18 @@ class SDFTransformer(Transformer):
         instance: str,
         delays: list[BaseEntry],
     ) -> None:
-        """Add delays to a cell."""
+        """Add delays to a cell, appending _1, _2, etc. on name collision."""
         cell_dict = self.sdf_file_obj.cells[celltype][instance]
-        for delay in delays:
-            store_entry(cell_dict, delay)
+        for entry in delays:
+            base_name = entry.name
+            key = base_name
+            if key in cell_dict:
+                counter = 1
+                while f"{base_name}_{counter}" in cell_dict:
+                    counter += 1
+                key = f"{base_name}_{counter}"
+                entry.name = key
+            cell_dict[key] = entry
 
     # ── Terminal values ──────────────────────────────────────────────
 

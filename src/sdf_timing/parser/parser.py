@@ -1,17 +1,12 @@
 """Lark-based SDF file parser with thread-safe caching."""
 
-from __future__ import annotations
-
 import threading
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from lark import Lark, LarkError
 
+from sdf_timing.core.model import SDFFile
 from sdf_timing.parser.transformers import SDFTransformer
-
-if TYPE_CHECKING:
-    from sdf_timing.core.model import SDFFile
 
 
 class SDFLarkParser:

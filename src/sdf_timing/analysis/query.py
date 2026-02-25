@@ -1,7 +1,5 @@
 """Filter and query SDF files by various criteria."""
 
-from __future__ import annotations
-
 import copy
 import re
 
@@ -58,12 +56,10 @@ def query(
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .add_cell("INV", "i0")
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 4.0, "avg": 5.0, "max": 6.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> result = query(sdf, cell_types=["BUF"])

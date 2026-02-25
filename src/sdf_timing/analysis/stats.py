@@ -1,13 +1,9 @@
 """Aggregate statistics over SDF delay values."""
 
-from __future__ import annotations
-
 import statistics
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from sdf_timing.core.model import SDFFile
+from sdf_timing.core.model import SDFFile
 
 
 @dataclass
@@ -76,12 +72,10 @@ def compute_stats(
     ...         .add_iopath("A", "Y", {
     ...             "slow": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .add_cell("INV", "i0")
     ...         .add_iopath("A", "Y", {
     ...             "slow": {"min": 4.0, "avg": 5.0, "max": 6.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> stats = compute_stats(sdf, field="slow", metric="max")

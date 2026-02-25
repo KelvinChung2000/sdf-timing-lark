@@ -17,14 +17,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """SDF file writer using Jinja2 templates."""
 
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
 
 import jinja2
 
-if TYPE_CHECKING:
-    from sdf_timing.core.model import BaseEntry, SDFFile, SDFHeader
+from sdf_timing.core.model import BaseEntry, SDFFile, SDFHeader
 
 env = jinja2.Environment(
     loader=jinja2.PackageLoader("sdf_timing.io", "templates"),

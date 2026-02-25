@@ -5,19 +5,15 @@ Embeds SDF timing data directly into Verilog cell library modules as
 Requires Yosys for robust Verilog parsing.
 """
 
-from __future__ import annotations
-
 import json
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path  # noqa: TC003 - used at runtime in signatures
-from typing import TYPE_CHECKING
 
 import jinja2
 
-if TYPE_CHECKING:
-    from sdf_timing.core.model import BaseEntry, DelayPaths, EdgeType, SDFFile, Values
+from sdf_timing.core.model import BaseEntry, DelayPaths, EdgeType, SDFFile, Values
 
 # ── Yosys JSON data structures ──────────────────────────────────────
 

@@ -4,39 +4,14 @@ Builds a directed multigraph from parsed SDF data and provides methods
 for path finding, delay composition, and verification.
 """
 
-from __future__ import annotations
-
 import functools
 import itertools
 import operator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import networkx as nx
 
-from sdf_timing.core.model import DelayPaths, EntryType
-
-if TYPE_CHECKING:
-    from sdf_timing.core.model import SDFFile
-
-
-@dataclass
-class RankedPath:
-    """A path with its composed delay and a scalar for ranking.
-
-    Attributes
-    ----------
-    edges : list[TimingEdge]
-        The ordered sequence of timing edges forming the path.
-    delay : DelayPaths
-        The composed delay along the path.
-    scalar : float | None
-        The extracted scalar value used for ranking.
-    """
-
-    edges: list[TimingEdge]
-    delay: DelayPaths
-    scalar: float | None
+from sdf_timing.core.model import DelayPaths, EntryType, SDFFile
 
 
 @dataclass(frozen=True)
@@ -65,6 +40,25 @@ class TimingEdge:
     entry_type: EntryType
     cell_type: str
     instance: str
+
+
+@dataclass
+class RankedPath:
+    """A path with its composed delay and a scalar for ranking.
+
+    Attributes
+    ----------
+    edges : list[TimingEdge]
+        The ordered sequence of timing edges forming the path.
+    delay : DelayPaths
+        The composed delay along the path.
+    scalar : float | None
+        The extracted scalar value used for ranking.
+    """
+
+    edges: list[TimingEdge]
+    delay: DelayPaths
+    scalar: float | None
 
 
 @dataclass
@@ -510,7 +504,6 @@ def critical_path(
     ...         .add_interconnect("a/Y", "b/A", {
     ...             "slow": {"min": 0.5, "avg": 1.0, "max": 1.5},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> g = TimingGraph(sdf)
@@ -566,7 +559,6 @@ def compute_slack(
     ...         .add_interconnect("a/Y", "b/A", {
     ...             "slow": {"min": 0.5, "avg": 1.0, "max": 1.5},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> g = TimingGraph(sdf)
@@ -642,7 +634,6 @@ def batch_endpoint_analysis(
     ...         .add_interconnect("a/Y", "b/A", {
     ...             "slow": {"min": 0.5, "avg": 1.0, "max": 1.5},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> g = TimingGraph(sdf)

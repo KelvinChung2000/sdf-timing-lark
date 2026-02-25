@@ -1,7 +1,5 @@
 """Merge two or more SDF files into one."""
 
-from __future__ import annotations
-
 import copy
 from enum import StrEnum
 
@@ -57,7 +55,6 @@ def merge(
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 1.0, "avg": 2.0, "max": 3.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> sdf_b = (
@@ -67,7 +64,6 @@ def merge(
     ...         .add_iopath("A", "Y", {
     ...             "nominal": {"min": 4.0, "avg": 5.0, "max": 6.0},
     ...         })
-    ...         .done()
     ...     .build()
     ... )
     >>> merged = merge([sdf_a, sdf_b])
