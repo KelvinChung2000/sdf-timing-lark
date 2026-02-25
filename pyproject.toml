@@ -26,7 +26,7 @@ dependencies = [
 ]
 
 [project.scripts]
-sdf_timing_parse = "sdf_timing.sdfparse:main"
+sdf_timing_parse = "sdf_timing.io.sdfparse:main"
 sdf-timing = "sdf_timing.cli:main"
 
 [project.urls]
@@ -40,6 +40,11 @@ dev = [
     "pytest-cov",
     "ty",
 ]
+docs = [
+    "sphinx",
+    "sphinx-rtd-theme",
+    "myst-parser",
+]
 
 [tool.setuptools_scm]
 version_scheme = "post-release"
@@ -48,7 +53,7 @@ version_scheme = "post-release"
 where = ["src"]
 
 [tool.setuptools.package-data]
-sdf_timing = ["*.lark", "templates/*.j2"]
+"sdf_timing.io" = ["*.lark", "templates/*.j2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]

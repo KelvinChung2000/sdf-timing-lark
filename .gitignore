@@ -29,6 +29,9 @@ coverage.xml
 parsetab.py
 parser.out
 
+# Sphinx documentation
+docs/_build/
+
 .z*
 *.log
 HEAD
