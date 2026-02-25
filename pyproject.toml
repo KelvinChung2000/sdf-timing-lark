@@ -15,15 +15,6 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = ["lark", "jinja2", "typer>=0.24.1", "rich>=14.3.3", "networkx"]
 
-[build-system]
-requires = ["hatchling", "hatch-vcs"]
-build-backend = "hatchling.build"
-
-[tool.hatch.version]
-source = "vcs"
-version_scheme = "post-release"
-local_scheme = "no-local-version"
-
 [project.scripts]
 sdf_timing_parse = "sdf_timing.io.sdfparse:main"
 sdf-timing = "sdf_timing.cli:main"
@@ -35,23 +26,27 @@ Homepage = "https://github.com/chipsalliance/python-sdf-timing"
 dev = ["pytest", "ruff", "pre-commit", "pytest-cov", "ty"]
 docs = ["sphinx", "sphinx-rtd-theme", "myst-parser"]
 
-[tool.setuptools_scm]
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
 version_scheme = "post-release"
+local_scheme = "no-local-version"
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/sdf_timing"]
 
-[tool.setuptools.package-data]
-"sdf_timing.io" = ["templates/*.j2"]
-"sdf_timing.parser" = ["*.lark"]
+[dependency-groups]
+dev = ["ty>=0.0.18"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]
 python_files = ["test_*.py", "*_test.py"]
 addopts = ["--doctest-modules", "--cov=sdf_timing", "--cov-report=term-missing"]
-
-[dependency-groups]
-dev = ["ty>=0.0.18"]
 
 [tool.ty.environment]
 python-version = "3.11"

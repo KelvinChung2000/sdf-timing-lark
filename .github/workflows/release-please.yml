@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - master
+  # Allow manual trigger to publish the latest tagged version to PyPI
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,6 +13,7 @@ permissions:
 
 jobs:
   release-please:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
@@ -20,13 +23,20 @@ jobs:
         with:
           release-type: python
 
+  # Runs when release-please creates a release (push) or on manual dispatch.
+  # Uses !cancelled() instead of always() to avoid publishing after cancellation.
   publish:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
+    if: |
+      !cancelled()
+      && (github.event_name == 'workflow_dispatch' || needs.release-please.outputs.release_created)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          # hatch-vcs needs full history to resolve version from git tags
+          fetch-depth: 0
 
       - name: Install uv
         uses: astral-sh/setup-uv@v7
