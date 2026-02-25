@@ -1,11 +1,20 @@
 import networkx as nx
 import pytest
 
-from sdf_toolkit.core.model import DelayPaths, SDFFile, SDFHeader, Values
+from sdf_toolkit.core.builder import SDFBuilder
+from sdf_toolkit.core.model import (
+    BaseEntry,
+    DelayPaths,
+    EntryType,
+    SDFFile,
+    SDFHeader,
+    Values,
+)
 from sdf_toolkit.core.pathgraph import (
     TimingGraph,
     VerificationResult,
     decompose_delay,
+    rank_paths,
     verify_path,
 )
 
@@ -126,6 +135,76 @@ class TestDecomposeDelay:
             fast=Values(min=0.795, avg=None, max=0.795),
         )
         assert unknown.approx_eq(expected, tolerance=1e-9)
+
+
+class TestGraphSkipsNonRoutableEntries:
+    """TimingGraph should skip entries that are not IOPATH or INTERCONNECT."""
+
+    def test_setup_hold_entries_skipped(self) -> None:
+        sdf = (
+            SDFBuilder()
+            .set_header(timescale="1ps")
+            .add_cell("FF", "ff0")
+            .add_setup("D", "CLK", {"nominal": {"min": 0.5, "avg": 0.5, "max": 0.5}})
+            .add_hold("D", "CLK", {"nominal": {"min": 0.3, "avg": 0.3, "max": 0.3}})
+            .add_iopath("D", "Q", {"nominal": {"min": 1.0, "avg": 1.0, "max": 1.0}})
+            .build()
+        )
+        graph = TimingGraph(sdf)
+        # Only the IOPATH should create edges; SETUP/HOLD are skipped
+        assert len(graph.edges()) == 1
+
+    def test_entries_with_none_pins_skipped(self) -> None:
+        sdf = SDFFile(
+            header=SDFHeader(timescale="1ps"),
+            cells={
+                "A": {
+                    "a0": {
+                        "e1": BaseEntry(
+                            name="e1",
+                            type=EntryType.IOPATH,
+                            from_pin=None,
+                            to_pin="Y",
+                            delay_paths=DelayPaths(
+                                nominal=Values(1.0, 1.0, 1.0),
+                            ),
+                        )
+                    }
+                }
+            },
+        )
+        graph = TimingGraph(sdf)
+        assert len(graph.edges()) == 0
+
+    def test_entries_with_none_delay_paths_skipped(self) -> None:
+        sdf = SDFFile(
+            header=SDFHeader(timescale="1ps"),
+            cells={
+                "A": {
+                    "a0": {
+                        "e1": BaseEntry(
+                            name="e1",
+                            type=EntryType.IOPATH,
+                            from_pin="A",
+                            to_pin="Y",
+                            delay_paths=None,
+                        )
+                    }
+                }
+            },
+        )
+        graph = TimingGraph(sdf)
+        assert len(graph.edges()) == 0
+
+
+class TestRankPathsNoneScalar:
+    def test_rank_paths_with_nonexistent_field(self, spec1_graph: TimingGraph) -> None:
+        """rank_paths with a field that yields None scalar still sorts correctly."""
+        ranked = rank_paths(spec1_graph, "P1/z", "P2/i", field="nominal", metric="min")
+        # spec-example1 has fast/slow only, so nominal yields None
+        assert len(ranked) > 0
+        for rp in ranked:
+            assert rp.scalar is None
 
 
 class TestEmptyGraph:

@@ -3,6 +3,7 @@
 from sdf_toolkit.core.builder import CellBuilder, SDFBuilder
 from sdf_toolkit.core.model import (
     BaseEntry,
+    EntryType,
     Hold,
     Iopath,
 )
@@ -49,3 +50,41 @@ class TestAddEntry:
 
         assert e3.name == "iopath_A_B_1"
         assert len(entries) == 3
+
+
+class TestCellBuilderDelegation:
+    def test_set_header_via_cell_builder(self):
+        """CellBuilder.set_header should delegate to parent SDFBuilder."""
+        sdf = (
+            SDFBuilder()
+            .add_cell("BUF", "b0")
+            .add_iopath("A", "Y", {"nominal": {"min": 1.0, "avg": 1.0, "max": 1.0}})
+            .set_header(sdfversion="4.0", timescale="1ns")
+            .add_cell("INV", "i0")
+            .add_iopath("A", "Z", {"nominal": {"min": 2.0, "avg": 2.0, "max": 2.0}})
+            .build()
+        )
+        assert sdf.header.sdfversion == "4.0"
+        assert sdf.header.timescale == "1ns"
+        assert "BUF" in sdf.cells
+        assert "INV" in sdf.cells
+
+    def test_add_path_constraint(self):
+        """CellBuilder.add_path_constraint creates a PATHCONSTRAINT entry."""
+        sdf = (
+            SDFBuilder()
+            .add_cell("XOR", "x0")
+            .add_path_constraint(
+                "A",
+                "B",
+                {
+                    "rise": {"min": 1.0, "avg": 2.0, "max": 3.0},
+                    "fall": {"min": 0.5, "avg": 1.0, "max": 1.5},
+                },
+            )
+            .build()
+        )
+        entries = sdf.cells["XOR"]["x0"]
+        assert len(entries) == 1
+        entry = next(iter(entries.values()))
+        assert entry.type == EntryType.PATHCONSTRAINT

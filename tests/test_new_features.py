@@ -2,13 +2,21 @@ import pytest
 from conftest import DATA_DIR
 
 from sdf_toolkit.analysis.diff import diff
-from sdf_toolkit.core.pathgraph import batch_endpoint_analysis
 from sdf_toolkit.analysis.query import query
-from sdf_toolkit.analysis.report import generate_report
+from sdf_toolkit.analysis.report import _format_float, generate_report
 from sdf_toolkit.analysis.stats import compute_stats
 from sdf_toolkit.analysis.validate import validate
 from sdf_toolkit.core.builder import SDFBuilder
-from sdf_toolkit.core.model import BaseEntry, CellsDict, EntryType, SDFFile, SDFHeader
+from sdf_toolkit.core.model import (
+    BaseEntry,
+    CellsDict,
+    DelayPaths,
+    EntryType,
+    SDFFile,
+    SDFHeader,
+    Values,
+)
+from sdf_toolkit.core.pathgraph import batch_endpoint_analysis
 from sdf_toolkit.parser.parser import parse_sdf
 from sdf_toolkit.transform.merge import ConflictStrategy, merge
 from sdf_toolkit.transform.normalize import normalize_delays
@@ -169,6 +177,64 @@ class TestValidate:
         assert len(severities) >= 2
         assert severities == sorted(severities, key=lambda s: 0 if s == "error" else 1)
 
+    def test_missing_from_pin(self):
+        entry = BaseEntry(
+            name="iopath_none_Y",
+            type=EntryType.IOPATH,
+            from_pin=None,
+            to_pin="Y",
+            delay_paths=DelayPaths(nominal=Values(min=1.0, avg=1.0, max=1.0)),
+        )
+        sdf = SDFFile(
+            header=SDFHeader(timescale="1ps"),
+            cells={"A": {"a0": {"e1": entry}}},
+        )
+        issues = validate(sdf)
+        errors = [i for i in issues if i.severity == "error"]
+        assert any("from_pin" in i.message for i in errors)
+
+    def test_missing_to_pin(self):
+        entry = BaseEntry(
+            name="iopath_A_none",
+            type=EntryType.IOPATH,
+            from_pin="A",
+            to_pin=None,
+            delay_paths=DelayPaths(nominal=Values(min=1.0, avg=1.0, max=1.0)),
+        )
+        sdf = SDFFile(
+            header=SDFHeader(timescale="1ps"),
+            cells={"A": {"a0": {"e1": entry}}},
+        )
+        issues = validate(sdf)
+        errors = [i for i in issues if i.severity == "error"]
+        assert any("to_pin" in i.message for i in errors)
+
+    def test_cross_cell_type_instance_warning(self):
+        dp = DelayPaths(nominal=Values(min=1.0, avg=1.0, max=1.0))
+        entry_a = BaseEntry(
+            name="e1",
+            type=EntryType.IOPATH,
+            from_pin="A",
+            to_pin="Y",
+            delay_paths=dp,
+        )
+        entry_b = BaseEntry(
+            name="e2",
+            type=EntryType.IOPATH,
+            from_pin="A",
+            to_pin="Y",
+            delay_paths=dp,
+        )
+        sdf = SDFFile(
+            header=SDFHeader(timescale="1ps"),
+            cells={
+                "BUF": {"shared_inst": {"e1": entry_a}},
+                "INV": {"shared_inst": {"e2": entry_b}},
+            },
+        )
+        issues = validate(sdf)
+        assert any("multiple" in i.message.lower() for i in issues)
+
 
 class TestStats:
     def test_stats_from_file(self):
@@ -244,6 +310,27 @@ class TestQuery:
                         scalar = entry.delay_paths.get_scalar("slow", "min")
                         if scalar is not None:
                             assert scalar >= 0.3
+
+    def test_filter_by_instance(self):
+        sdf = parse_sdf((DATA_DIR / "spec-example1.sdf").read_text())
+        # spec-example1 has instances; pick one that exists
+        first_instance = next(
+            inst for instances in sdf.cells.values() for inst in instances
+        )
+        result = query(sdf, instances=[first_instance])
+        for instances in result.cells.values():
+            assert first_instance in instances
+
+    def test_max_delay_filter(self):
+        sdf = parse_sdf((DATA_DIR / "spec-example1.sdf").read_text())
+        result = query(sdf, max_delay=0.5, field="slow", metric="max")
+        for instances in result.cells.values():
+            for entries in instances.values():
+                for entry in entries.values():
+                    if entry.delay_paths:
+                        scalar = entry.delay_paths.get_scalar("slow", "max")
+                        if scalar is not None:
+                            assert scalar <= 0.5
 
 
 class TestDiff:
@@ -356,3 +443,17 @@ class TestReport:
         text = generate_report(sdf, field="slow", metric="min")
         assert isinstance(text, str)
         assert len(text) > 0
+
+    def test_report_with_validation_issues(self):
+        """Report on SDF with validation issues shows the issues table."""
+        sdf = SDFFile(
+            header=SDFHeader(),
+            cells={"A": {"a0": {"e1": BaseEntry(name="e1", delay_paths=None)}}},
+        )
+        text = generate_report(sdf, field="slow", metric="min")
+        assert "Validation Issues" in text
+
+    def test_report_format_float_none(self):
+        """Exercise _format_float(None) -> 'N/A'."""
+        assert _format_float(None) == "N/A"
+        assert "." in _format_float(1.5)

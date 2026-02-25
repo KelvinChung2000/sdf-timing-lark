@@ -1,14 +1,18 @@
 import json
+import subprocess
+import sys
 from pathlib import Path
+from unittest.mock import patch
 
 from conftest import DATA_DIR
 from typer.testing import CliRunner
 
-from sdf_toolkit.cli import app
+from sdf_toolkit.cli import app, main
 
 runner = CliRunner()
 
 SPEC_EXAMPLE1 = str(DATA_DIR / "spec-example1.sdf")
+EMPTY_SDF = str(DATA_DIR / "empty.sdf")
 
 
 class TestParse:
@@ -201,6 +205,190 @@ class TestDotCmd:
         assert out.exists()
         content = out.read_text()
         assert "digraph timing" in content
+
+
+TEST1 = str(DATA_DIR / "test1.sdf")
+
+
+class TestNormalizeCmd:
+    def test_normalize_json(self) -> None:
+        result = runner.invoke(app, ["normalize", SPEC_EXAMPLE1, "--target", "1ps"])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "header" in data
+        assert data["header"]["timescale"] == "1ps"
+
+    def test_normalize_sdf(self) -> None:
+        result = runner.invoke(
+            app, ["normalize", SPEC_EXAMPLE1, "--target", "1ps", "-f", "sdf"]
+        )
+        assert result.exit_code == 0
+        assert "DELAYFILE" in result.output
+
+
+class TestLintCmd:
+    def test_lint_clean_file(self) -> None:
+        result = runner.invoke(app, ["lint", SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+
+    def test_lint_with_issues(self) -> None:
+        """Lint a file that has issues to cover the table output path."""
+        result = runner.invoke(app, ["lint", EMPTY_SDF])
+        assert result.exit_code == 0
+        assert "Lint Issues" in result.output
+
+    def test_lint_severity_filter(self) -> None:
+        result = runner.invoke(app, ["lint", SPEC_EXAMPLE1, "--severity", "error"])
+        assert result.exit_code == 0
+
+
+class TestStatsCmd:
+    def test_stats_default(self) -> None:
+        result = runner.invoke(app, ["stats", SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+        assert "SDF Statistics" in result.output
+
+    def test_stats_custom_field_metric(self) -> None:
+        result = runner.invoke(
+            app, ["stats", TEST1, "--field", "slow", "--metric", "min"]
+        )
+        assert result.exit_code == 0
+        assert "SDF Statistics" in result.output
+        assert "Entry Type Counts" in result.output
+
+
+class TestQueryCmd:
+    def test_query_json(self) -> None:
+        result = runner.invoke(app, ["query", SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "cells" in data
+
+    def test_query_sdf(self) -> None:
+        result = runner.invoke(app, ["query", SPEC_EXAMPLE1, "-f", "sdf"])
+        assert result.exit_code == 0
+        assert "DELAYFILE" in result.output
+
+    def test_query_cell_type_filter(self) -> None:
+        result = runner.invoke(app, ["query", SPEC_EXAMPLE1, "--cell-type", "INV"])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "INV" in data["cells"]
+
+    def test_query_entry_type_filter(self) -> None:
+        result = runner.invoke(app, ["query", SPEC_EXAMPLE1, "--entry-type", "iopath"])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "cells" in data
+
+
+class TestDiffCmd:
+    def test_diff_identical(self) -> None:
+        result = runner.invoke(app, ["diff", SPEC_EXAMPLE1, SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+        assert "identical" in result.output.lower()
+
+    def test_diff_different_files(self) -> None:
+        result = runner.invoke(app, ["diff", TEST1, SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+        # Different timescales produce header diffs and/or entry diffs
+        output = result.output
+        assert (
+            "Header Differences" in output
+            or "Only in A" in output
+            or "Only in B" in output
+            or "Value Differences" in output
+        )
+
+    def test_diff_value_diffs(self, tmp_path: Path) -> None:
+        """Diff two files with same structure but different delay values."""
+        original = Path(SPEC_EXAMPLE1).read_text()
+        # Replace a delay value that exists in the file
+        modified = original.replace(".345", ".999")
+        modified_file = tmp_path / "modified.sdf"
+        modified_file.write_text(modified)
+
+        result = runner.invoke(app, ["diff", SPEC_EXAMPLE1, str(modified_file)])
+        assert result.exit_code == 0
+        assert "Value Differences" in result.output
+
+
+class TestMergeCmd:
+    def test_merge_json(self) -> None:
+        result = runner.invoke(app, ["merge", SPEC_EXAMPLE1, SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "cells" in data
+
+    def test_merge_sdf(self) -> None:
+        result = runner.invoke(
+            app, ["merge", SPEC_EXAMPLE1, SPEC_EXAMPLE1, "-f", "sdf"]
+        )
+        assert result.exit_code == 0
+        assert "DELAYFILE" in result.output
+
+    def test_merge_strategy(self) -> None:
+        result = runner.invoke(
+            app,
+            ["merge", SPEC_EXAMPLE1, SPEC_EXAMPLE1, "--strategy", "keep-first"],
+        )
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "cells" in data
+
+
+class TestBatchAnalysisCmd:
+    def test_batch_analysis_default(self) -> None:
+        result = runner.invoke(app, ["batch-analysis", SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+        assert "Batch Endpoint Analysis" in result.output
+
+    def test_batch_analysis_with_limit(self) -> None:
+        result = runner.invoke(app, ["batch-analysis", SPEC_EXAMPLE1, "-n", "2"])
+        assert result.exit_code == 0
+        assert "Batch Endpoint Analysis" in result.output
+
+    def test_batch_analysis_no_endpoints(self) -> None:
+        """Empty SDF graph has no endpoint pairs."""
+        result = runner.invoke(app, ["batch-analysis", EMPTY_SDF])
+        assert result.exit_code == 1
+        assert "No endpoint pairs found" in result.output
+
+
+class TestReportCmd:
+    def test_report_default(self) -> None:
+        result = runner.invoke(app, ["report", SPEC_EXAMPLE1])
+        assert result.exit_code == 0
+        assert "SDF Header" in result.output or len(result.output) > 0
+
+    def test_report_with_period(self) -> None:
+        result = runner.invoke(app, ["report", SPEC_EXAMPLE1, "--period", "10.0"])
+        assert result.exit_code == 0
+
+
+class TestMainEntry:
+    def test_main_callable(self) -> None:
+        """Test that main() is importable and the app runs with --help."""
+        result = runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        assert "Usage" in result.output
+
+    def test_main_function_directly(self) -> None:
+        """Call main() directly to cover the entry point."""
+        with patch("sdf_toolkit.cli.app") as mock_app:
+            main()
+            mock_app.assert_called_once()
+
+    def test_python_m_sdf_toolkit(self) -> None:
+        """Test running as ``python -m sdf_toolkit --help``."""
+        proc = subprocess.run(
+            [sys.executable, "-m", "sdf_toolkit", "--help"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        assert proc.returncode == 0
+        assert "Usage" in proc.stdout
 
 
 class TestNoArgs:

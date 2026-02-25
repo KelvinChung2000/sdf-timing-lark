@@ -1,9 +1,12 @@
 """Tests for sdf_transformers.py -- transformer coverage for edge cases."""
 
+import pytest
 from conftest import DATA_DIR
+from lark import Token
 
 from sdf_toolkit.core.model import EntryType
 from sdf_toolkit.parser.parser import parse_sdf
+from sdf_toolkit.parser.transformers import SDFTransformer
 
 
 class TestIncrementDelays:
@@ -79,7 +82,6 @@ class TestSingleFloatRvalue:
     def test_single_float_value(self):
         sdf_content = (DATA_DIR / "spec-example1.sdf").read_text()
         result = parse_sdf(sdf_content)
-        assert result is not None
         assert len(result.cells) > 0
 
 
@@ -146,3 +148,24 @@ class TestDeviceDelays:
                 for entry in entries.values():
                     assert entry.type == EntryType.DEVICE
                     assert entry.from_pin == entry.to_pin
+
+
+class TestEmptyRvalue:
+    def test_empty_rvalue_produces_default_values(self):
+        """rvalue with no args or empty token list produces Values()."""
+        result = SDFTransformer().rvalue()
+        assert result.min is None
+        assert result.avg is None
+        assert result.max is None
+
+
+class TestInvalidPortSpec:
+    def test_invalid_port_spec_raises(self):
+        """port_spec with >2 args raises ValueError."""
+        t = SDFTransformer()
+        with pytest.raises(ValueError, match="Invalid port_spec"):
+            t.port_spec(
+                Token("ID", "posedge"),
+                Token("ID", "CLK"),
+                Token("ID", "extra"),
+            )
