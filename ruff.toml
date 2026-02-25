@@ -62,7 +62,14 @@ target-version = "py311"
 # - UP: pyupgrade
 # - BLE: flake8 blind except
 # - ERA: commented code
-# - D: docstyle
+# - A: flake8 builtins
+# - PTH: flake8 use-pathlib
+# - TRY: tryceratops
+# - SIM: flake8 simplify
+# - ARG: flake8 unused-arguments
+# - ANN: flake8 annotations
+# - D: pydocstyle
+# - N: pep8 naming
 
 select = [
   "E",
@@ -97,7 +104,6 @@ select = [
   "ARG",
   "ANN",
   "D",
-  "DOC",
   "N",
 ]
 
@@ -119,7 +125,7 @@ unfixable = []
 dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 
 [lint.per-file-ignores]
-"tests/*" = ["D"]
+"tests/*" = ["D", "ANN"]
 
 [lint.pydoclint]
 ignore-one-line-docstrings = true
