@@ -14,10 +14,10 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 
-from sdf_timing.model import DelayPaths, EntryType
+from sdf_timing.core.model import DelayPaths, EntryType
 
 if TYPE_CHECKING:
-    from sdf_timing.model import SDFFile
+    from sdf_timing.core.model import SDFFile
 
 
 @dataclass
@@ -495,6 +495,28 @@ def critical_path(
     -------
     RankedPath | None
         The critical (slowest) path, or None if no paths exist.
+
+    Examples
+    --------
+    >>> from sdf_timing.core.builder import SDFBuilder
+    >>> from sdf_timing.analysis.pathgraph import TimingGraph, critical_path
+    >>> sdf = (
+    ...     SDFBuilder()
+    ...     .set_header(timescale="1ps")
+    ...     .add_cell("BUF", "b")
+    ...         .add_iopath("A", "Y", {
+    ...             "slow": {"min": 1.0, "avg": 2.0, "max": 3.0},
+    ...         })
+    ...         .add_interconnect("a/Y", "b/A", {
+    ...             "slow": {"min": 0.5, "avg": 1.0, "max": 1.5},
+    ...         })
+    ...         .done()
+    ...     .build()
+    ... )
+    >>> g = TimingGraph(sdf)
+    >>> cp = critical_path(g, "a/Y", "b/Y", "slow", "max")
+    >>> cp.scalar
+    4.5
     """
     ranked = rank_paths(graph, source, sink, field, metric, descending=True)
     return ranked[0] if ranked else None
@@ -529,11 +551,148 @@ def compute_slack(
     -------
     float | None
         The slack, or None if no critical path or scalar is None.
+
+    Examples
+    --------
+    >>> from sdf_timing.core.builder import SDFBuilder
+    >>> from sdf_timing.analysis.pathgraph import TimingGraph, compute_slack
+    >>> sdf = (
+    ...     SDFBuilder()
+    ...     .set_header(timescale="1ps")
+    ...     .add_cell("BUF", "b")
+    ...         .add_iopath("A", "Y", {
+    ...             "slow": {"min": 1.0, "avg": 2.0, "max": 3.0},
+    ...         })
+    ...         .add_interconnect("a/Y", "b/A", {
+    ...             "slow": {"min": 0.5, "avg": 1.0, "max": 1.5},
+    ...         })
+    ...         .done()
+    ...     .build()
+    ... )
+    >>> g = TimingGraph(sdf)
+    >>> compute_slack(g, "a/Y", "b/Y", 10.0, "slow", "max")
+    5.5
     """
     cp = critical_path(graph, source, sink, field, metric)
     if cp is None or cp.scalar is None:
         return None
     return period - cp.scalar
+
+
+@dataclass
+class EndpointResult:
+    """Result of analyzing a single source-to-sink endpoint pair.
+
+    Attributes
+    ----------
+    source : str
+        The startpoint pin name.
+    sink : str
+        The endpoint pin name.
+    critical_delay : float | None
+        The scalar delay of the critical path, or None.
+    path_count : int
+        Number of distinct paths between source and sink.
+    """
+
+    source: str
+    sink: str
+    critical_delay: float | None
+    path_count: int
+
+
+def batch_endpoint_analysis(
+    graph: TimingGraph,
+    field: str = "slow",
+    metric: str = "max",
+    sources: list[str] | None = None,
+    sinks: list[str] | None = None,
+) -> list[EndpointResult]:
+    """Analyze all startpoint-to-endpoint pairs in a timing graph.
+
+    Parameters
+    ----------
+    graph : TimingGraph
+        The timing graph to analyze.
+    field : str
+        Delay field to extract (nominal, fast, slow, ...).
+    metric : str
+        Metric to extract (min, avg, max).
+    sources : list[str] | None
+        Source pins to consider. Defaults to all startpoints.
+    sinks : list[str] | None
+        Sink pins to consider. Defaults to all endpoints.
+
+    Returns
+    -------
+    list[EndpointResult]
+        Results sorted by critical_delay descending (None last).
+
+    Examples
+    --------
+    >>> from sdf_timing.core.builder import SDFBuilder
+    >>> from sdf_timing.analysis.pathgraph import TimingGraph, batch_endpoint_analysis
+    >>> sdf = (
+    ...     SDFBuilder()
+    ...     .set_header(timescale="1ps")
+    ...     .add_cell("BUF", "b")
+    ...         .add_iopath("A", "Y", {
+    ...             "slow": {"min": 1.0, "avg": 2.0, "max": 3.0},
+    ...         })
+    ...         .add_interconnect("a/Y", "b/A", {
+    ...             "slow": {"min": 0.5, "avg": 1.0, "max": 1.5},
+    ...         })
+    ...         .done()
+    ...     .build()
+    ... )
+    >>> g = TimingGraph(sdf)
+    >>> results = batch_endpoint_analysis(g, "slow", "max")
+    >>> len(results)
+    1
+    >>> results[0].source
+    'a/Y'
+    >>> results[0].sink
+    'b/Y'
+    >>> results[0].critical_delay
+    4.5
+    """
+    if sources is None:
+        sources = sorted(graph.startpoints())
+    if sinks is None:
+        sinks = sorted(graph.endpoints())
+
+    results: list[EndpointResult] = []
+    for src in sources:
+        for snk in sinks:
+            paths = graph.find_paths(src, snk)
+            if not paths:
+                continue
+
+            # Compute critical delay directly from found paths to avoid
+            # a redundant second find_paths call via critical_path().
+            scalars = [
+                s
+                for p in paths
+                if (s := graph.compose_delay(p).get_scalar(field, metric)) is not None
+            ]
+            critical_delay = max(scalars) if scalars else None
+
+            results.append(
+                EndpointResult(
+                    source=src,
+                    sink=snk,
+                    critical_delay=critical_delay,
+                    path_count=len(paths),
+                )
+            )
+
+    def _sort_key(r: EndpointResult) -> tuple[int, float]:
+        if r.critical_delay is None:
+            return (1, 0.0)
+        return (0, -r.critical_delay)
+
+    results.sort(key=_sort_key)
+    return results
 
 
 def decompose_delay(total: DelayPaths, known: DelayPaths) -> DelayPaths:

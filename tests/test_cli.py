@@ -5,7 +5,7 @@ from unittest.mock import patch
 import pytest
 from conftest import DATA_DIR
 
-from sdf_timing.sdfparse import main
+from sdf_timing.io.sdfparse import main
 
 
 class TestCLIMain:

@@ -53,7 +53,8 @@ version_scheme = "post-release"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"sdf_timing.io" = ["*.lark", "templates/*.j2"]
+"sdf_timing.io" = ["templates/*.j2"]
+"sdf_timing.parser" = ["*.lark"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]

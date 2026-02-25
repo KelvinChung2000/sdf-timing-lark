@@ -1,38 +1,71 @@
 """sdf_timing -- parse and emit Standard Delay Format (SDF) timing files."""
 
-from sdf_timing.annotate import annotate_verilog
-from sdf_timing.export import to_dot
-from sdf_timing.model import SDFFile, SDFHeader
-from sdf_timing.pathgraph import (
+from sdf_timing.analysis import (
+    DiffEntry,
+    DiffResult,
+    EndpointResult,
+    LintIssue,
     RankedPath,
+    SDFStats,
     TimingEdge,
     TimingGraph,
     VerificationResult,
+    batch_endpoint_analysis,
     compute_slack,
+    compute_stats,
     critical_path,
     decompose_delay,
+    diff,
+    generate_report,
+    query,
     rank_paths,
+    to_dot,
+    validate,
     verify_path,
 )
-from sdf_timing.sdf_lark_parser import parse_sdf, parse_sdf_file
-from sdf_timing.sdfparse import emit, parse
+from sdf_timing.core import CellBuilder, SDFBuilder, SDFFile, SDFHeader
+from sdf_timing.io import annotate_verilog, emit, emit_sdf, parse
+from sdf_timing.parser import parse_sdf, parse_sdf_file
+from sdf_timing.transform import ConflictStrategy, merge, normalize_delays
 
 __all__ = [
-    "annotate_verilog",
-    "RankedPath",
+    # core
+    "CellBuilder",
+    "SDFBuilder",
     "SDFFile",
     "SDFHeader",
+    # parser
+    "parse_sdf",
+    "parse_sdf_file",
+    # io
+    "annotate_verilog",
+    "emit",
+    "emit_sdf",
+    "parse",
+    # analysis
+    "DiffEntry",
+    "DiffResult",
+    "EndpointResult",
+    "LintIssue",
+    "RankedPath",
+    "SDFStats",
     "TimingEdge",
     "TimingGraph",
     "VerificationResult",
+    "batch_endpoint_analysis",
     "compute_slack",
+    "compute_stats",
     "critical_path",
     "decompose_delay",
-    "emit",
-    "parse",
-    "parse_sdf",
-    "parse_sdf_file",
+    "diff",
+    "generate_report",
+    "query",
     "rank_paths",
     "to_dot",
+    "validate",
     "verify_path",
+    # transform
+    "ConflictStrategy",
+    "merge",
+    "normalize_delays",
 ]

@@ -8,7 +8,24 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from sdf_timing.annotate import (
+from sdf_timing.cli import app
+from sdf_timing.core.model import (
+    BaseEntry,
+    DelayPaths,
+    EdgeType,
+    EntryType,
+    Hold,
+    Interconnect,
+    Iopath,
+    Recovery,
+    SDFFile,
+    SDFHeader,
+    Setup,
+    SetupHold,
+    Values,
+    Width,
+)
+from sdf_timing.io.annotate import (
     SpecifyEntry,
     WireDelay,
     YosysCell,
@@ -25,23 +42,6 @@ from sdf_timing.annotate import (
     resolve_interconnects,
     run_yosys,
     select_worst_case_delays,
-)
-from sdf_timing.cli import app
-from sdf_timing.model import (
-    BaseEntry,
-    DelayPaths,
-    EdgeType,
-    EntryType,
-    Hold,
-    Interconnect,
-    Iopath,
-    Recovery,
-    SDFFile,
-    SDFHeader,
-    Setup,
-    SetupHold,
-    Values,
-    Width,
 )
 
 DATA_DIR = (Path(__file__).parent / "data").resolve()

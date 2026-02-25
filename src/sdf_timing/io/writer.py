@@ -24,10 +24,10 @@ from typing import TYPE_CHECKING
 import jinja2
 
 if TYPE_CHECKING:
-    from sdf_timing.model import BaseEntry, SDFFile, SDFHeader
+    from sdf_timing.core.model import BaseEntry, SDFFile, SDFHeader
 
 env = jinja2.Environment(
-    loader=jinja2.PackageLoader("sdf_timing", "templates"),
+    loader=jinja2.PackageLoader("sdf_timing.io", "templates"),
     keep_trailing_newline=True,
 )
 

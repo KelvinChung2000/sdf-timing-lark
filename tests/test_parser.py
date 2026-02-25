@@ -6,7 +6,7 @@ import pytest
 from conftest import DATA_DIR
 from lark import LarkError
 
-from sdf_timing.sdf_lark_parser import (
+from sdf_timing.parser.parser import (
     SDFLarkParser,
     _local,
     get_parser,
@@ -106,5 +106,5 @@ class TestModuleLevelFunctions:
         assert result1.header == result2.header
         # Same cells (count and content)
         assert len(result1.cells) == len(result2.cells)
-        for c1, c2 in zip(result1.cells, result2.cells):
+        for c1, c2 in zip(result1.cells, result2.cells, strict=True):
             assert c1 == c2

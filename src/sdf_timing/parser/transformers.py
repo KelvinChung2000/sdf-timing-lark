@@ -6,7 +6,7 @@ from typing import TypeVar
 
 from lark import Token, Transformer, v_args
 
-from sdf_timing.model import (
+from sdf_timing.core.model import (
     BaseEntry,
     DelayPaths,
     Device,
@@ -27,7 +27,7 @@ from sdf_timing.model import (
     Values,
     Width,
 )
-from sdf_timing.utils import store_entry
+from sdf_timing.core.utils import store_entry
 
 _TC = TypeVar("_TC", bound=TimingCheck)
 
@@ -249,11 +249,11 @@ class SDFTransformer(Transformer):
     ) -> Iopath:
         """Process IOPATH delay specification."""
         return Iopath(
-            name=f"iopath_{input_port['port']}_{output_port['port']}",
-            from_pin=input_port["port"],
-            to_pin=output_port["port"],
-            from_pin_edge=input_port["port_edge"],
-            to_pin_edge=output_port["port_edge"],
+            name=f"iopath_{input_port.port}_{output_port.port}",
+            from_pin=input_port.port,
+            to_pin=output_port.port,
+            from_pin_edge=input_port.port_edge,
+            to_pin_edge=output_port.port_edge,
             delay_paths=delay_values,
         )
 
@@ -266,11 +266,11 @@ class SDFTransformer(Transformer):
     ) -> Interconnect:
         """Process INTERCONNECT delay specification."""
         return Interconnect(
-            name=f"interconnect_{input_port['port']}_{output_port['port']}",
-            from_pin=input_port["port"],
-            to_pin=output_port["port"],
-            from_pin_edge=input_port["port_edge"],
-            to_pin_edge=output_port["port_edge"],
+            name=f"interconnect_{input_port.port}_{output_port.port}",
+            from_pin=input_port.port,
+            to_pin=output_port.port,
+            from_pin_edge=input_port.port_edge,
+            to_pin_edge=output_port.port_edge,
             delay_paths=delay_values,
         )
 
@@ -278,9 +278,9 @@ class SDFTransformer(Transformer):
     def port(self, port_spec: PortSpec, delay_values: DelayPaths) -> Port:
         """Process PORT delay specification."""
         return Port(
-            name=f"port_{port_spec['port']}",
-            from_pin=port_spec["port"],
-            to_pin=port_spec["port"],
+            name=f"port_{port_spec.port}",
+            from_pin=port_spec.port,
+            to_pin=port_spec.port,
             delay_paths=delay_values,
         )
 
@@ -288,9 +288,9 @@ class SDFTransformer(Transformer):
     def device(self, port_spec: PortSpec, delay_values: DelayPaths) -> Device:
         """Process DEVICE delay specification."""
         return Device(
-            name=f"device_{port_spec['port']}",
-            from_pin=port_spec["port"],
-            to_pin=port_spec["port"],
+            name=f"device_{port_spec.port}",
+            from_pin=port_spec.port,
+            to_pin=port_spec.port,
             delay_paths=delay_values,
         )
 
@@ -311,34 +311,30 @@ class SDFTransformer(Transformer):
         return str(token)
 
     @v_args(inline=True)
-    def timing_port(self, *args: PortSpec | str | list[str]) -> TimingPortSpec:
-        """Process timing port with optional condition."""
+    def timing_port(self, *args: PortSpec | str) -> TimingPortSpec:
+        """Process timing port with optional condition.
+
+        Grammar: ``timing_port: port_spec | "(" "COND" equation port_spec ")"``
+
+        Receives either 1 arg (bare port_spec) or 2 args (equation, port_spec).
+        """
         if len(args) == 1:
-            port_spec = args[0]
-            if isinstance(port_spec, dict):
-                return TimingPortSpec(
-                    port=port_spec["port"],
-                    port_edge=port_spec["port_edge"],
-                    cond=False,
-                    cond_equation=None,
-                )
-            return TimingPortSpec(
-                port=str(port_spec), port_edge=None, cond=False, cond_equation=None
-            )
+            ps = args[0]
+            if not isinstance(ps, PortSpec):
+                raise TypeError(f"Expected PortSpec, got {type(ps).__name__}")
+            return TimingPortSpec(port=ps.port, port_edge=ps.port_edge)
 
         if len(args) == 2:
-            condition, port_spec = args
-            if isinstance(port_spec, dict):
-                if isinstance(condition, list):
-                    cond_eq = " ".join(str(x) for x in condition)
-                else:
-                    cond_eq = str(condition) if condition else ""
-                return TimingPortSpec(
-                    port=port_spec["port"],
-                    port_edge=port_spec["port_edge"],
-                    cond=True,
-                    cond_equation=cond_eq,
-                )
+            condition, ps = args
+            if not isinstance(ps, PortSpec):
+                raise TypeError(f"Expected PortSpec, got {type(ps).__name__}")
+            cond_eq = str(condition) if condition else ""
+            return TimingPortSpec(
+                port=ps.port,
+                port_edge=ps.port_edge,
+                cond=True,
+                cond_equation=cond_eq,
+            )
 
         raise ValueError(f"Invalid timing_port args: {args}")
 
@@ -353,14 +349,14 @@ class SDFTransformer(Transformer):
     ) -> _TC:
         """Build a timing check entry from port specs and delay paths."""
         return cls(
-            name=f"{cls.__name__.lower()}_{from_port['port']}_{to_port['port']}",
+            name=f"{cls.__name__.lower()}_{from_port.port}_{to_port.port}",
             is_timing_check=True,
-            is_cond=from_port["cond"],
-            cond_equation=from_port["cond_equation"],
-            from_pin=from_port["port"],
-            to_pin=to_port["port"],
-            from_pin_edge=from_port["port_edge"],
-            to_pin_edge=to_port["port_edge"],
+            is_cond=from_port.cond,
+            cond_equation=from_port.cond_equation,
+            from_pin=from_port.port,
+            to_pin=to_port.port,
+            from_pin_edge=from_port.port_edge,
+            to_pin_edge=to_port.port_edge,
             delay_paths=paths,
         )
 
@@ -465,12 +461,12 @@ class SDFTransformer(Transformer):
         """Process path constraint."""
         paths = DelayPaths(rise=rise_val, fall=fall_val)
         return PathConstraint(
-            name=f"pathconstraint_{from_port['port']}_{to_port['port']}",
+            name=f"pathconstraint_{from_port.port}_{to_port.port}",
             is_timing_env=True,
-            from_pin=from_port["port"],
-            to_pin=to_port["port"],
-            from_pin_edge=from_port["port_edge"],
-            to_pin_edge=to_port["port_edge"],
+            from_pin=from_port.port,
+            to_pin=to_port.port,
+            from_pin_edge=from_port.port_edge,
+            to_pin_edge=to_port.port_edge,
             delay_paths=paths,
         )
 

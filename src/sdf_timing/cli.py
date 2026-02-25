@@ -17,8 +17,17 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from sdf_timing.export import to_dot
-from sdf_timing.model import (
+from sdf_timing.analysis.export import to_dot
+from sdf_timing.analysis.pathgraph import (
+    TimingGraph,
+    batch_endpoint_analysis,
+    compute_slack,
+    critical_path,
+    decompose_delay,
+    rank_paths,
+    verify_path,
+)
+from sdf_timing.core.model import (
     BaseEntry,
     DelayPaths,
     EntryType,
@@ -26,19 +35,27 @@ from sdf_timing.model import (
     SDFHeader,
     Values,
 )
-from sdf_timing.pathgraph import (
-    TimingGraph,
-    compute_slack,
-    critical_path,
-    decompose_delay,
-    rank_paths,
-    verify_path,
-)
-from sdf_timing.sdf_lark_parser import parse_sdf
-from sdf_timing.sdfparse import emit as sdf_emit
+from sdf_timing.io.sdfparse import emit as sdf_emit
+from sdf_timing.parser.parser import parse_sdf
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
+
+
+def _load_sdf(sdf_file: Path) -> SDFFile:
+    """Parse an SDF file and return the SDFFile object.
+
+    Parameters
+    ----------
+    sdf_file : Path
+        Path to the SDF file.
+
+    Returns
+    -------
+    SDFFile
+        The parsed SDF file.
+    """
+    return parse_sdf(sdf_file.read_text())
 
 
 def _load_graph(sdf_file: Path) -> tuple[SDFFile, TimingGraph]:
@@ -54,7 +71,7 @@ def _load_graph(sdf_file: Path) -> tuple[SDFFile, TimingGraph]:
     tuple[SDFFile, TimingGraph]
         The parsed SDF file and its timing graph.
     """
-    sdf = parse_sdf(sdf_file.read_text())
+    sdf = _load_sdf(sdf_file)
     return sdf, TimingGraph(sdf)
 
 
@@ -85,9 +102,9 @@ def _sdffile_from_dict(data: dict[str, object]) -> SDFFile:
         for instance, entries in instances.items():
             cells[cell_type][instance] = {}
             for name, entry_dict in entries.items():
-                entry_dict = dict(entry_dict)  # noqa: PLW2901
+                fields = dict(entry_dict)
                 # Convert delay_paths back to DelayPaths
-                dp_dict = entry_dict.pop("delay_paths", None)
+                dp_dict = fields.pop("delay_paths", None)
                 delay_paths = None
                 if dp_dict is not None:
                     delay_paths = DelayPaths(
@@ -97,9 +114,9 @@ def _sdffile_from_dict(data: dict[str, object]) -> SDFFile:
                         }
                     )
                 # Convert type string back to EntryType
-                entry_type = entry_dict.pop("type", "iopath")
+                entry_type = fields.pop("type", "iopath")
                 entry = BaseEntry(
-                    **entry_dict,
+                    **fields,
                     type=EntryType(entry_type),
                     delay_paths=delay_paths,
                 )
@@ -143,8 +160,7 @@ def parse(
     ] = "1ps",
 ) -> None:
     """Parse an SDF file and output as JSON or SDF."""
-    content = sdf_file.read_text()
-    sdf = parse_sdf(content)
+    sdf = _load_sdf(sdf_file)
 
     if fmt == OutputFormat.json:
         typer.echo(json.dumps(sdf.to_dict(), indent=2))
@@ -177,8 +193,7 @@ def info(
     ],
 ) -> None:
     """Show a summary of an SDF file (header, cell count, entry types)."""
-    content = sdf_file.read_text()
-    sdf = parse_sdf(content)
+    sdf = _load_sdf(sdf_file)
 
     # Header table
     header_table = Table(title="SDF Header")
@@ -189,19 +204,19 @@ def info(
     console.print(header_table)
 
     # Cell summary
-    instances: list[str] = []
+    instance_names: list[str] = []
     entry_type_counts: Counter[str] = Counter()
 
-    for _cell_type, cell_instances in sdf.cells.items():
+    for cell_instances in sdf.cells.values():
         for instance_name, entries in cell_instances.items():
-            instances.append(instance_name)
-            for _entry_name, entry in entries.items():
+            instance_names.append(instance_name)
+            for entry in entries.values():
                 entry_type_counts[str(entry.type)] += 1
 
     summary_table = Table(title="Cell Summary")
     summary_table.add_column("Metric", style="cyan")
     summary_table.add_column("Value", style="green")
-    summary_table.add_row("Total cells", str(len(instances)))
+    summary_table.add_row("Total cells", str(len(instance_names)))
     console.print(summary_table)
 
     # Entry type breakdown
@@ -215,7 +230,7 @@ def info(
     # Instance list
     instance_table = Table(title="Instances")
     instance_table.add_column("Instance", style="cyan")
-    for inst in instances:
+    for inst in instance_names:
         instance_table.add_row(inst)
     console.print(instance_table)
 
@@ -540,7 +555,7 @@ def annotate(
     ] = "max",
 ) -> None:
     """Annotate a Verilog cell library with SDF timing specify blocks."""
-    from sdf_timing.annotate import annotate_verilog
+    from sdf_timing.io.annotate import annotate_verilog
 
     result = annotate_verilog(
         sdf_path=sdf_file,
@@ -554,6 +569,399 @@ def annotate(
         typer.echo(result)
     else:
         typer.echo(f"Written to {output}")
+
+
+@app.command()
+def normalize(
+    sdf_file: Annotated[
+        Path,
+        typer.Argument(help="Path to the SDF file."),
+    ],
+    target: Annotated[
+        str,
+        typer.Option("--target", help="Target timescale (e.g. 1ns, 1ps)."),
+    ],
+    fmt: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="Output format."),
+    ] = OutputFormat.json,
+) -> None:
+    """Normalize all delays in an SDF file to a target timescale."""
+    from sdf_timing.transform.normalize import normalize_delays
+
+    sdf = _load_sdf(sdf_file)
+    result = normalize_delays(sdf, target)
+
+    if fmt == OutputFormat.json:
+        typer.echo(json.dumps(result.to_dict(), indent=2))
+    else:
+        typer.echo(sdf_emit(result, timescale=target))
+
+
+@app.command()
+def lint(
+    sdf_file: Annotated[
+        Path,
+        typer.Argument(help="Path to the SDF file."),
+    ],
+    severity: Annotated[
+        str,
+        typer.Option("--severity", help="Filter by severity: error, warning, or all."),
+    ] = "all",
+) -> None:
+    """Validate an SDF file and report structural/semantic issues."""
+    from sdf_timing.analysis.validate import validate
+
+    sdf = _load_sdf(sdf_file)
+    issues = validate(sdf)
+
+    if severity != "all":
+        issues = [i for i in issues if i.severity == severity]
+
+    if not issues:
+        typer.echo("No issues found.")
+        return
+
+    table = Table(title="Lint Issues")
+    table.add_column("Severity", style="red")
+    table.add_column("Cell Type", style="cyan")
+    table.add_column("Instance", style="cyan")
+    table.add_column("Entry", style="cyan")
+    table.add_column("Message", style="yellow")
+
+    for issue in issues:
+        table.add_row(
+            issue.severity,
+            issue.cell_type or "-",
+            issue.instance or "-",
+            issue.entry_name or "-",
+            issue.message,
+        )
+
+    console.print(table)
+
+
+@app.command()
+def stats(
+    sdf_file: Annotated[
+        Path,
+        typer.Argument(help="Path to the SDF file."),
+    ],
+    field: Annotated[
+        str,
+        typer.Option("--field", help="Delay field (nominal, fast, slow, ...)."),
+    ] = "slow",
+    metric: Annotated[
+        str,
+        typer.Option("--metric", help="Metric (min, avg, max)."),
+    ] = "max",
+) -> None:
+    """Compute aggregate statistics over delay values."""
+    from sdf_timing.analysis.stats import compute_stats
+
+    sdf = _load_sdf(sdf_file)
+    result = compute_stats(sdf, field, metric)
+
+    table = Table(title="SDF Statistics")
+    table.add_column("Metric", style="cyan")
+    table.add_column("Value", style="green")
+
+    table.add_row("Total cell types", str(result.total_cells))
+    table.add_row("Total instances", str(result.total_instances))
+    table.add_row("Total entries", str(result.total_entries))
+    table.add_row("Delay min", str(result.delay_min))
+    table.add_row("Delay max", str(result.delay_max))
+    table.add_row("Delay mean", str(result.delay_mean))
+    table.add_row("Delay median", str(result.delay_median))
+
+    console.print(table)
+
+    if result.entry_type_counts:
+        type_table = Table(title="Entry Type Counts")
+        type_table.add_column("Type", style="cyan")
+        type_table.add_column("Count", style="green")
+        for etype, count in sorted(result.entry_type_counts.items()):
+            type_table.add_row(etype, str(count))
+        console.print(type_table)
+
+
+@app.command(name="query")
+def query_cmd(
+    sdf_file: Annotated[
+        Path,
+        typer.Argument(help="Path to the SDF file."),
+    ],
+    cell_type: Annotated[
+        list[str] | None,
+        typer.Option("--cell-type", help="Filter by cell type (repeatable)."),
+    ] = None,
+    instance: Annotated[
+        list[str] | None,
+        typer.Option("--instance", help="Filter by instance name (repeatable)."),
+    ] = None,
+    entry_type: Annotated[
+        list[str] | None,
+        typer.Option("--entry-type", help="Filter by entry type (repeatable)."),
+    ] = None,
+    pin_pattern: Annotated[
+        str | None,
+        typer.Option("--pin-pattern", help="Regex to match from_pin or to_pin."),
+    ] = None,
+    min_delay: Annotated[
+        float | None,
+        typer.Option("--min-delay", help="Minimum delay threshold."),
+    ] = None,
+    max_delay: Annotated[
+        float | None,
+        typer.Option("--max-delay", help="Maximum delay threshold."),
+    ] = None,
+    field: Annotated[
+        str,
+        typer.Option("--field", help="Delay field (nominal, fast, slow, ...)."),
+    ] = "slow",
+    metric: Annotated[
+        str,
+        typer.Option("--metric", help="Metric (min, avg, max)."),
+    ] = "max",
+    fmt: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="Output format."),
+    ] = OutputFormat.json,
+) -> None:
+    """Filter and query SDF file entries."""
+    from sdf_timing.analysis.query import query
+
+    sdf = _load_sdf(sdf_file)
+
+    entry_types = [EntryType(e) for e in entry_type] if entry_type else None
+
+    result = query(
+        sdf,
+        cell_types=cell_type,
+        instances=instance,
+        entry_types=entry_types,
+        pin_pattern=pin_pattern,
+        min_delay=min_delay,
+        max_delay=max_delay,
+        field=field,
+        metric=metric,
+    )
+
+    if fmt == OutputFormat.json:
+        typer.echo(json.dumps(result.to_dict(), indent=2))
+    else:
+        typer.echo(sdf_emit(result, timescale=result.header.timescale or "1ps"))
+
+
+@app.command(name="diff")
+def diff_cmd(
+    file_a: Annotated[
+        Path,
+        typer.Argument(help="Path to the first SDF file."),
+    ],
+    file_b: Annotated[
+        Path,
+        typer.Argument(help="Path to the second SDF file."),
+    ],
+    tolerance: Annotated[
+        float,
+        typer.Option("--tolerance", help="Absolute tolerance for value comparison."),
+    ] = 1e-9,
+    normalize_first: Annotated[
+        bool,
+        typer.Option(
+            "--normalize/--no-normalize", help="Normalize timescales before comparing."
+        ),
+    ] = False,
+    target_timescale: Annotated[
+        str,
+        typer.Option("--target-timescale", help="Target timescale for normalization."),
+    ] = "1ps",
+) -> None:
+    """Compare two SDF files and report differences."""
+    from sdf_timing.analysis.diff import diff
+
+    sdf_a = _load_sdf(file_a)
+    sdf_b = _load_sdf(file_b)
+
+    result = diff(
+        sdf_a,
+        sdf_b,
+        tolerance=tolerance,
+        normalize_first=normalize_first,
+        target_timescale=target_timescale,
+    )
+
+    if result.header_diffs:
+        header_table = Table(title="Header Differences")
+        header_table.add_column("Field", style="cyan")
+        header_table.add_column("File A", style="green")
+        header_table.add_column("File B", style="yellow")
+        for fld, (va, vb) in result.header_diffs.items():
+            header_table.add_row(fld, str(va), str(vb))
+        console.print(header_table)
+
+    if result.only_in_a:
+        typer.echo(f"\nOnly in A: {len(result.only_in_a)} entries")
+        for ct, inst, en in result.only_in_a[:20]:
+            typer.echo(f"  {ct}/{inst}/{en}")
+
+    if result.only_in_b:
+        typer.echo(f"\nOnly in B: {len(result.only_in_b)} entries")
+        for ct, inst, en in result.only_in_b[:20]:
+            typer.echo(f"  {ct}/{inst}/{en}")
+
+    if result.value_diffs:
+        diff_table = Table(title=f"Value Differences ({len(result.value_diffs)} total)")
+        diff_table.add_column("Cell/Instance/Entry", style="cyan")
+        diff_table.add_column("Field", style="cyan")
+        diff_table.add_column("A", style="green")
+        diff_table.add_column("B", style="yellow")
+        diff_table.add_column("Delta", style="red")
+        for d in result.value_diffs[:50]:
+            diff_table.add_row(
+                f"{d.cell_type}/{d.instance}/{d.entry_name}",
+                d.field,
+                str(d.value_a),
+                str(d.value_b),
+                str(d.delta),
+            )
+        console.print(diff_table)
+
+    if (
+        not result.header_diffs
+        and not result.only_in_a
+        and not result.only_in_b
+        and not result.value_diffs
+    ):
+        typer.echo("Files are identical.")
+
+
+@app.command(name="merge")
+def merge_cmd(
+    files: Annotated[
+        list[Path],
+        typer.Argument(help="SDF files to merge (at least 2)."),
+    ],
+    strategy: Annotated[
+        str,
+        typer.Option(
+            "--strategy",
+            help="Conflict strategy: keep-first, keep-last, error.",
+        ),
+    ] = "keep-last",
+    target_timescale: Annotated[
+        str | None,
+        typer.Option(
+            "--target-timescale",
+            help="Normalize to this timescale before merging.",
+        ),
+    ] = None,
+    fmt: Annotated[
+        OutputFormat,
+        typer.Option("--format", "-f", help="Output format."),
+    ] = OutputFormat.json,
+) -> None:
+    """Merge two or more SDF files into one."""
+    from sdf_timing.transform.merge import ConflictStrategy, merge
+
+    sdf_files = [_load_sdf(f) for f in files]
+    result = merge(
+        sdf_files,
+        strategy=ConflictStrategy(strategy),
+        target_timescale=target_timescale,
+    )
+
+    if fmt == OutputFormat.json:
+        typer.echo(json.dumps(result.to_dict(), indent=2))
+    else:
+        typer.echo(sdf_emit(result, timescale=result.header.timescale or "1ps"))
+
+
+@app.command(name="batch-analysis")
+def batch_analysis_cmd(
+    sdf_file: Annotated[
+        Path,
+        typer.Argument(help="Path to the SDF file."),
+    ],
+    field: Annotated[
+        str,
+        typer.Option("--field", help="Delay field (nominal, fast, slow, ...)."),
+    ] = "slow",
+    metric: Annotated[
+        str,
+        typer.Option("--metric", help="Metric (min, avg, max)."),
+    ] = "max",
+    limit: Annotated[
+        int,
+        typer.Option("--limit", "-n", help="Maximum number of results to show."),
+    ] = 20,
+) -> None:
+    """Analyze all startpoint-to-endpoint pairs in the timing graph."""
+    _sdf, graph = _load_graph(sdf_file)
+
+    results = batch_endpoint_analysis(graph, field, metric)
+    if limit > 0:
+        results = results[:limit]
+
+    if not results:
+        typer.echo("No endpoint pairs found.")
+        raise typer.Exit(code=1)
+
+    table = Table(title="Batch Endpoint Analysis")
+    table.add_column("Rank", style="cyan")
+    table.add_column("Source", style="green")
+    table.add_column("Sink", style="green")
+    table.add_column("Critical Delay", style="yellow")
+    table.add_column("Path Count", style="cyan")
+
+    for i, r in enumerate(results):
+        table.add_row(
+            str(i + 1),
+            r.source,
+            r.sink,
+            str(r.critical_delay),
+            str(r.path_count),
+        )
+
+    console.print(table)
+
+
+@app.command()
+def report(
+    sdf_file: Annotated[
+        Path,
+        typer.Argument(help="Path to the SDF file."),
+    ],
+    field: Annotated[
+        str,
+        typer.Option("--field", help="Delay field (nominal, fast, slow, ...)."),
+    ] = "slow",
+    metric: Annotated[
+        str,
+        typer.Option("--metric", help="Metric (min, avg, max)."),
+    ] = "max",
+    top_n: Annotated[
+        int,
+        typer.Option("--top-n", help="Number of top critical paths to show."),
+    ] = 10,
+    period: Annotated[
+        float | None,
+        typer.Option("--period", help="Clock period for slack analysis."),
+    ] = None,
+) -> None:
+    """Generate a comprehensive timing report."""
+    from sdf_timing.analysis.report import generate_report
+
+    sdf = _load_sdf(sdf_file)
+    text = generate_report(
+        sdf,
+        field=field,
+        metric=metric,
+        top_n_paths=top_n,
+        period=period,
+    )
+    typer.echo(text)
 
 
 def main() -> None:

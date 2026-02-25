@@ -5,7 +5,7 @@ from __future__ import annotations
 import operator
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any, ClassVar, TypedDict
+from typing import TYPE_CHECKING, Any, ClassVar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, ItemsView, KeysView, ValuesView
@@ -34,20 +34,20 @@ class EdgeType(StrEnum):
     NEGEDGE = "negedge"
 
 
-class PortSpec(TypedDict):
+@dataclass(frozen=True, slots=True)
+class PortSpec:
     """Port specification with name and optional edge."""
 
     port: str
-    port_edge: EdgeType | None
+    port_edge: EdgeType | None = None
 
 
-class TimingPortSpec(TypedDict):
+@dataclass(frozen=True, slots=True)
+class TimingPortSpec(PortSpec):
     """Port specification for timing checks, with condition info."""
 
-    port: str
-    port_edge: EdgeType | None
-    cond: bool
-    cond_equation: str | None
+    cond: bool = False
+    cond_equation: str | None = None
 
 
 @dataclass

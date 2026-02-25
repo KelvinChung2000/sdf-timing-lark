@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 
 from lark import Lark, LarkError
 
-from sdf_timing.sdf_transformers import SDFTransformer
+from sdf_timing.parser.transformers import SDFTransformer
 
 if TYPE_CHECKING:
-    from sdf_timing.model import SDFFile
+    from sdf_timing.core.model import SDFFile
 
 
 class SDFLarkParser:

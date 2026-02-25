@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from sdf_timing.export import to_dot
-from sdf_timing.pathgraph import TimingGraph, critical_path
+from sdf_timing.analysis.export import to_dot
+from sdf_timing.analysis.pathgraph import TimingGraph, critical_path
 
 
 class TestToDot:

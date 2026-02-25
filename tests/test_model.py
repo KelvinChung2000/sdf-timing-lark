@@ -2,7 +2,7 @@
 
 import pytest
 
-from sdf_timing.model import (
+from sdf_timing.core.model import (
     BaseEntry,
     DelayPaths,
     EntryType,
