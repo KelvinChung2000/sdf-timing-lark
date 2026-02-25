@@ -5,7 +5,7 @@ from sdf_toolkit.analysis.export import to_dot
 from sdf_toolkit.analysis.query import query
 from sdf_toolkit.analysis.report import generate_report
 from sdf_toolkit.analysis.stats import SDFStats, compute_stats
-from sdf_toolkit.analysis.validate import LintIssue, validate
+from sdf_toolkit.analysis.validate import IssueSeverity, LintIssue, validate
 from sdf_toolkit.core.pathgraph import (
     EndpointResult,
     RankedPath,
@@ -47,6 +47,7 @@ __all__ = [
     "SDFStats",
     "compute_stats",
     # validate
+    "IssueSeverity",
     "LintIssue",
     "validate",
 ]

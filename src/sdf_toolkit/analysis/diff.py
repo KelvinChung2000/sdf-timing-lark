@@ -2,24 +2,15 @@
 
 from dataclasses import dataclass, field
 
-from sdf_toolkit.core.model import DelayPaths, SDFFile, Values
-from sdf_toolkit.transform.normalize import normalize_delays
-
-_HEADER_FIELDS: tuple[str, ...] = (
-    "sdfversion",
-    "design",
-    "vendor",
-    "program",
-    "version",
-    "divider",
-    "date",
-    "voltage",
-    "process",
-    "temperature",
-    "timescale",
+from sdf_toolkit.core.model import (
+    DelayField,
+    DelayMetric,
+    DelayPaths,
+    HeaderField,
+    SDFFile,
+    Values,
 )
-
-_VALUES_FIELDS: tuple[str, ...] = ("min", "avg", "max")
+from sdf_toolkit.transform.normalize import normalize_delays
 
 
 @dataclass
@@ -136,7 +127,7 @@ def _compare_values(
     """
     diffs: list[DiffEntry] = []
 
-    for metric in _VALUES_FIELDS:
+    for metric in DelayMetric:
         val_a: float | None = (
             getattr(values_a, metric) if values_a is not None else None
         )
@@ -200,7 +191,7 @@ def _compare_delay_paths(
     """
     diffs: list[DiffEntry] = []
 
-    for field_name in DelayPaths._FIELD_NAMES:  # noqa: SLF001
+    for field_name in DelayField:
         values_a: Values | None = (
             getattr(dp_a, field_name) if dp_a is not None else None
         )
@@ -294,7 +285,7 @@ def diff(
     result = DiffResult()
 
     # Compare headers
-    for hdr_field in _HEADER_FIELDS:
+    for hdr_field in HeaderField:
         val_a: str | None = getattr(a.header, hdr_field)
         val_b: str | None = getattr(b.header, hdr_field)
         if val_a != val_b:

@@ -9,11 +9,40 @@ import json
 import re
 import subprocess
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path  # noqa: TC003 - used at runtime in signatures
 
 import jinja2
 
-from sdf_toolkit.core.model import BaseEntry, DelayPaths, EdgeType, SDFFile, Values
+from sdf_toolkit.core.model import (
+    BaseEntry,
+    DelayPaths,
+    EdgeType,
+    EntryType,
+    SDFFile,
+    Values,
+)
+
+
+class SpecifyKind(StrEnum):
+    """Kind of entry in a Verilog specify block."""
+
+    IOPATH = "iopath"
+    SETUP = "setup"
+    HOLD = "hold"
+    SETUPHOLD = "setuphold"
+    WIDTH = "width"
+    RECOVERY = "recovery"
+    REMOVAL = "removal"
+
+
+class PortDirection(StrEnum):
+    """Port direction in a Yosys module."""
+
+    INPUT = "input"
+    OUTPUT = "output"
+    INOUT = "inout"
+
 
 # ── Yosys JSON data structures ──────────────────────────────────────
 
@@ -23,7 +52,7 @@ class YosysPort:
     """A port in a Yosys module."""
 
     name: str
-    direction: str  # "input" | "output" | "inout"
+    direction: PortDirection
     bits: list[int | str] = field(default_factory=list)
 
 
@@ -60,8 +89,7 @@ class YosysDesign:
 class SpecifyEntry:
     """A single entry in a Verilog specify block."""
 
-    # "iopath" | "setup" | "hold" | "setuphold" | ...
-    kind: str
+    kind: SpecifyKind
     from_pin: str
     to_pin: str | None = None
     from_edge: str | None = None  # "posedge" | "negedge" | None
@@ -154,7 +182,7 @@ def parse_yosys_json(json_data: dict) -> YosysDesign:
         for port_name, port_data in mod_data.get("ports", {}).items():
             module.ports[port_name] = YosysPort(
                 name=port_name,
-                direction=port_data.get("direction", "input"),
+                direction=PortDirection(port_data.get("direction", "input")),
                 bits=port_data.get("bits", []),
             )
 
@@ -331,15 +359,13 @@ def entries_to_specify(
     list[SpecifyEntry]
         Specify block entries ready for rendering.
     """
-    from sdf_toolkit.core.model import EntryType
-
     # Timing check kinds that use a single delay limit
-    single_limit_kinds: dict[EntryType, str] = {
-        EntryType.SETUP: "setup",
-        EntryType.HOLD: "hold",
-        EntryType.WIDTH: "width",
-        EntryType.RECOVERY: "recovery",
-        EntryType.REMOVAL: "removal",
+    single_limit_kinds: dict[EntryType, SpecifyKind] = {
+        EntryType.SETUP: SpecifyKind.SETUP,
+        EntryType.HOLD: SpecifyKind.HOLD,
+        EntryType.WIDTH: SpecifyKind.WIDTH,
+        EntryType.RECOVERY: SpecifyKind.RECOVERY,
+        EntryType.REMOVAL: SpecifyKind.REMOVAL,
     }
 
     result: list[SpecifyEntry] = []
@@ -356,7 +382,7 @@ def entries_to_specify(
             cond = entry.cond_equation if entry.is_cond else None
             result.append(
                 SpecifyEntry(
-                    kind="iopath",
+                    kind=SpecifyKind.IOPATH,
                     from_pin=entry.from_pin or "",
                     to_pin=entry.to_pin,
                     from_edge=from_edge,
@@ -371,7 +397,7 @@ def entries_to_specify(
             h = _format_values_triple(dp.hold) if dp.hold else "0"
             result.append(
                 SpecifyEntry(
-                    kind="setuphold",
+                    kind=SpecifyKind.SETUPHOLD,
                     from_pin=entry.from_pin or "",
                     to_pin=entry.to_pin,
                     from_edge=from_edge,
@@ -423,7 +449,7 @@ def _format_specify_entry(entry: SpecifyEntry) -> str:
     data_str = _format_pin(entry.from_pin, entry.from_edge)
     ref_str = _format_pin(entry.to_pin or "", entry.to_edge)
 
-    if entry.kind == "iopath":
+    if entry.kind == SpecifyKind.IOPATH:
         if entry.fall_delay is not None:
             delay_str = f"({entry.rise_delay}, {entry.fall_delay})"
         else:
@@ -433,18 +459,18 @@ def _format_specify_entry(entry: SpecifyEntry) -> str:
             return f"{indent}if ({entry.condition}) {path_str};"
         return f"{indent}{path_str};"
 
-    if entry.kind == "setup":
+    if entry.kind == SpecifyKind.SETUP:
         return f"{indent}$setup({data_str}, {ref_str}, {entry.rise_delay});"
 
-    if entry.kind == "setuphold":
+    if entry.kind == SpecifyKind.SETUPHOLD:
         s, h = entry.setup_limit, entry.hold_limit
         return f"{indent}$setuphold({ref_str}, {data_str}, {s}, {h});"
 
-    if entry.kind == "width":
+    if entry.kind == SpecifyKind.WIDTH:
         return f"{indent}$width({data_str}, {entry.rise_delay});"
 
     # hold, recovery, removal all share: $kind(ref, data, limit)
-    if entry.kind in ("hold", "recovery", "removal"):
+    if entry.kind in (SpecifyKind.HOLD, SpecifyKind.RECOVERY, SpecifyKind.REMOVAL):
         return f"{indent}${entry.kind}({ref_str}, {data_str}, {entry.rise_delay});"
 
     return ""
@@ -501,8 +527,6 @@ def resolve_interconnects(
     list[WireDelay]
         Wire delay annotations for net declarations.
     """
-    from sdf_toolkit.core.model import EntryType
-
     if top_module not in design.modules:
         return []
     module = design.modules[top_module]
@@ -677,7 +701,6 @@ def annotate_verilog(
     str
         The annotated Verilog text.
     """
-    from sdf_toolkit.core.model import EntryType
     from sdf_toolkit.parser.parser import parse_sdf
 
     # 1. Parse SDF

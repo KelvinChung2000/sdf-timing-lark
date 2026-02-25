@@ -4,7 +4,7 @@ import operator
 from collections.abc import Callable, ItemsView, KeysView, ValuesView
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
-from typing import Any, ClassVar
+from typing import Any
 
 
 class EntryType(StrEnum):
@@ -28,6 +28,42 @@ class EdgeType(StrEnum):
 
     POSEDGE = "posedge"
     NEGEDGE = "negedge"
+
+
+class DelayField(StrEnum):
+    """Delay path field names in DelayPaths."""
+
+    NOMINAL = "nominal"
+    FAST = "fast"
+    SLOW = "slow"
+    SETUP = "setup"
+    HOLD = "hold"
+    RISE = "rise"
+    FALL = "fall"
+
+
+class DelayMetric(StrEnum):
+    """Metric names within a Values triple."""
+
+    MIN = "min"
+    AVG = "avg"
+    MAX = "max"
+
+
+class HeaderField(StrEnum):
+    """SDF header field names."""
+
+    SDFVERSION = "sdfversion"
+    DESIGN = "design"
+    VENDOR = "vendor"
+    PROGRAM = "program"
+    VERSION = "version"
+    DIVIDER = "divider"
+    DATE = "date"
+    VOLTAGE = "voltage"
+    PROCESS = "process"
+    TEMPERATURE = "temperature"
+    TIMESCALE = "timescale"
 
 
 @dataclass(frozen=True, slots=True)
@@ -274,27 +310,15 @@ class DelayPaths:
     rise: Values | None = None
     fall: Values | None = None
 
-    _FIELD_NAMES: ClassVar[tuple[str, ...]] = (
-        "nominal",
-        "fast",
-        "slow",
-        "setup",
-        "hold",
-        "rise",
-        "fall",
-    )
-
-    _METRIC_NAMES: ClassVar[tuple[str, ...]] = ("min", "avg", "max")
-
     def get_scalar(self, field: str = "slow", metric: str = "max") -> float | None:
         """Extract a single float from a named field and metric.
 
         Parameters
         ----------
         field : str
-            One of the ``_FIELD_NAMES`` (nominal, fast, slow, …).
+            One of the ``DelayField`` values (nominal, fast, slow, …).
         metric : str
-            One of ``min``, ``avg``, ``max``.
+            One of the ``DelayMetric`` values (min, avg, max).
 
         Returns
         -------
@@ -306,11 +330,11 @@ class DelayPaths:
         ValueError
             If *field* or *metric* is not a valid name.
         """
-        if field not in self._FIELD_NAMES:
-            msg = f"Invalid field {field!r}, expected one of {self._FIELD_NAMES}"
+        if field not in DelayField:
+            msg = f"Invalid field {field!r}, expected one of {tuple(DelayField)}"
             raise ValueError(msg)
-        if metric not in self._METRIC_NAMES:
-            msg = f"Invalid metric {metric!r}, expected one of {self._METRIC_NAMES}"
+        if metric not in DelayMetric:
+            msg = f"Invalid metric {metric!r}, expected one of {tuple(DelayMetric)}"
             raise ValueError(msg)
         values: Values | None = getattr(self, field)
         if values is None:
@@ -321,7 +345,7 @@ class DelayPaths:
         """Return non-None delay paths as a dictionary."""
         return {
             name: val.to_dict()
-            for name in self._FIELD_NAMES
+            for name in DelayField
             if (val := getattr(self, name)) is not None
         }
 
@@ -353,7 +377,7 @@ class DelayPaths:
             A new DelayPaths with the operation applied. None propagates None.
         """
         kwargs: dict[str, Values | None] = {}
-        for name in self._FIELD_NAMES:
+        for name in DelayField:
             a = getattr(self, name)
             b = getattr(other, name)
             kwargs[name] = op(a, b) if a is not None and b is not None else None
@@ -404,7 +428,7 @@ class DelayPaths:
         bool
             True if all fields are approximately equal or both None.
         """
-        for name in self._FIELD_NAMES:
+        for name in DelayField:
             a = getattr(self, name)
             b = getattr(other, name)
             if a is None and b is None:

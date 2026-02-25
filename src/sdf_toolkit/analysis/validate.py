@@ -1,8 +1,16 @@
 """Structural and semantic validation for SDF files."""
 
 from dataclasses import dataclass
+from enum import StrEnum
 
-from sdf_toolkit.core.model import DelayPaths, EntryType, SDFFile, Values
+from sdf_toolkit.core.model import DelayField, DelayPaths, EntryType, SDFFile, Values
+
+
+class IssueSeverity(StrEnum):
+    """Severity levels for validation issues."""
+
+    ERROR = "error"
+    WARNING = "warning"
 
 
 @dataclass
@@ -11,8 +19,8 @@ class LintIssue:
 
     Attributes
     ----------
-    severity : str
-        Either ``"error"`` or ``"warning"``.
+    severity : IssueSeverity
+        Either ``IssueSeverity.ERROR`` or ``IssueSeverity.WARNING``.
     cell_type : str
         The cell type where the issue was found.
     instance : str
@@ -23,7 +31,7 @@ class LintIssue:
         Human-readable description of the issue.
     """
 
-    severity: str
+    severity: IssueSeverity
     cell_type: str
     instance: str
     entry_name: str
@@ -46,7 +54,7 @@ def _check_header(sdf: SDFFile) -> list[LintIssue]:
     if sdf.header.timescale is None:
         return [
             LintIssue(
-                severity="warning",
+                severity=IssueSeverity.WARNING,
                 cell_type="",
                 instance="",
                 entry_name="",
@@ -72,7 +80,7 @@ def _check_empty_cells(sdf: SDFFile) -> list[LintIssue]:
     if not sdf.cells:
         return [
             LintIssue(
-                severity="warning",
+                severity=IssueSeverity.WARNING,
                 cell_type="",
                 instance="",
                 entry_name="",
@@ -108,7 +116,7 @@ def _check_delay_paths_values(
         components.
     """
     issues: list[LintIssue] = []
-    for field_name in DelayPaths._FIELD_NAMES:  # noqa: SLF001
+    for field_name in DelayField:
         values: Values | None = getattr(delay_paths, field_name)
         if (
             values is not None
@@ -118,7 +126,7 @@ def _check_delay_paths_values(
         ):
             issues.append(
                 LintIssue(
-                    severity="warning",
+                    severity=IssueSeverity.WARNING,
                     cell_type=cell_type,
                     instance=instance,
                     entry_name=entry_name,
@@ -156,7 +164,7 @@ def _check_cross_cell_type_instances(sdf: SDFFile) -> list[LintIssue]:
             cell_types_str = ", ".join(sorted(cell_types))
             issues.append(
                 LintIssue(
-                    severity="warning",
+                    severity=IssueSeverity.WARNING,
                     cell_type="",
                     instance=instance,
                     entry_name="",
@@ -229,7 +237,7 @@ def validate(sdf: SDFFile) -> list[LintIssue]:
                 if entry.delay_paths is None:
                     issues.append(
                         LintIssue(
-                            severity="error",
+                            severity=IssueSeverity.ERROR,
                             cell_type=cell_type,
                             instance=instance,
                             entry_name=entry_name,
@@ -243,7 +251,7 @@ def validate(sdf: SDFFile) -> list[LintIssue]:
                     if entry.from_pin is None:
                         issues.append(
                             LintIssue(
-                                severity="error",
+                                severity=IssueSeverity.ERROR,
                                 cell_type=cell_type,
                                 instance=instance,
                                 entry_name=entry_name,
@@ -255,7 +263,7 @@ def validate(sdf: SDFFile) -> list[LintIssue]:
                     if entry.to_pin is None:
                         issues.append(
                             LintIssue(
-                                severity="error",
+                                severity=IssueSeverity.ERROR,
                                 cell_type=cell_type,
                                 instance=instance,
                                 entry_name=entry_name,
@@ -279,7 +287,7 @@ def validate(sdf: SDFFile) -> list[LintIssue]:
     issues.extend(_check_cross_cell_type_instances(sdf))
 
     # Sort: errors first, then warnings
-    severity_order = {"error": 0, "warning": 1}
-    issues.sort(key=lambda issue: severity_order.get(issue.severity, 2))
+    severity_order = {IssueSeverity.ERROR: 0, IssueSeverity.WARNING: 1}
+    issues.sort(key=lambda issue: severity_order[issue.severity])
 
     return issues

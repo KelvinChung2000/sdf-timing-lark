@@ -5,6 +5,7 @@ from typing import TypeVar
 from sdf_toolkit.core.model import (
     BaseEntry,
     CellsDict,
+    DelayField,
     DelayPaths,
     Device,
     EdgeType,
@@ -36,11 +37,7 @@ def _resolve_delays(delays: DelaysInput) -> DelayPaths:
     if isinstance(delays, DelayPaths):
         return delays
     return DelayPaths(
-        **{
-            name: Values(**delays[name])
-            for name in DelayPaths._FIELD_NAMES  # noqa: SLF001
-            if name in delays
-        }
+        **{name: Values(**delays[name]) for name in DelayField if name in delays}
     )
 
 

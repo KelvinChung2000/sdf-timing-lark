@@ -2,7 +2,7 @@
 
 import copy
 
-from sdf_toolkit.core.model import DelayPaths, SDFFile, Values
+from sdf_toolkit.core.model import DelayField, DelayPaths, SDFFile, Values
 from sdf_toolkit.core.utils import get_scale_fs
 
 
@@ -80,7 +80,7 @@ def _scale_delay_paths(
     if delay_paths is None:
         return
 
-    for field_name in DelayPaths._FIELD_NAMES:  # noqa: SLF001
+    for field_name in DelayField:
         values: Values | None = getattr(delay_paths, field_name)
         if values is not None:
             setattr(
