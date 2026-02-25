@@ -13,7 +13,7 @@ from pathlib import Path  # noqa: TC003 - used at runtime in signatures
 
 import jinja2
 
-from sdf_timing.core.model import BaseEntry, DelayPaths, EdgeType, SDFFile, Values
+from sdf_toolkit.core.model import BaseEntry, DelayPaths, EdgeType, SDFFile, Values
 
 # ── Yosys JSON data structures ──────────────────────────────────────
 
@@ -331,7 +331,7 @@ def entries_to_specify(
     list[SpecifyEntry]
         Specify block entries ready for rendering.
     """
-    from sdf_timing.core.model import EntryType
+    from sdf_toolkit.core.model import EntryType
 
     # Timing check kinds that use a single delay limit
     single_limit_kinds: dict[EntryType, str] = {
@@ -451,7 +451,7 @@ def _format_specify_entry(entry: SpecifyEntry) -> str:
 
 
 _jinja_env = jinja2.Environment(
-    loader=jinja2.PackageLoader("sdf_timing.io", "templates"),
+    loader=jinja2.PackageLoader("sdf_toolkit.io", "templates"),
     keep_trailing_newline=True,
 )
 
@@ -501,7 +501,7 @@ def resolve_interconnects(
     list[WireDelay]
         Wire delay annotations for net declarations.
     """
-    from sdf_timing.core.model import EntryType
+    from sdf_toolkit.core.model import EntryType
 
     if top_module not in design.modules:
         return []
@@ -677,8 +677,8 @@ def annotate_verilog(
     str
         The annotated Verilog text.
     """
-    from sdf_timing.core.model import EntryType
-    from sdf_timing.parser.parser import parse_sdf
+    from sdf_toolkit.core.model import EntryType
+    from sdf_toolkit.parser.parser import parse_sdf
 
     # 1. Parse SDF
     sdf = parse_sdf(sdf_path.read_text())

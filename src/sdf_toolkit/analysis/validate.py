@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from sdf_timing.core.model import DelayPaths, EntryType, SDFFile, Values
+from sdf_toolkit.core.model import DelayPaths, EntryType, SDFFile, Values
 
 
 @dataclass
@@ -184,8 +184,8 @@ def validate(sdf: SDFFile) -> list[LintIssue]:
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
-    >>> from sdf_timing.analysis.validate import validate
+    >>> from sdf_toolkit.core.builder import SDFBuilder
+    >>> from sdf_toolkit.analysis.validate import validate
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

@@ -1,7 +1,7 @@
 # Statistics
 
 ```{eval-rst}
-.. automodule:: sdf_timing.stats
+.. automodule:: sdf_toolkit.stats
    :members:
    :undoc-members:
    :show-inheritance:

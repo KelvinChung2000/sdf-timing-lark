@@ -1,7 +1,7 @@
 # Normalization
 
 ```{eval-rst}
-.. automodule:: sdf_timing.normalize
+.. automodule:: sdf_toolkit.normalize
    :members:
    :undoc-members:
    :show-inheritance:

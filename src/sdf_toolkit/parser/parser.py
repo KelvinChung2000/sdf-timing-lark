@@ -5,8 +5,8 @@ from pathlib import Path
 
 from lark import Lark, LarkError
 
-from sdf_timing.core.model import SDFFile
-from sdf_timing.parser.transformers import SDFTransformer
+from sdf_toolkit.core.model import SDFFile
+from sdf_toolkit.parser.transformers import SDFTransformer
 
 
 class SDFLarkParser:

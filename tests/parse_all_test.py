@@ -19,8 +19,8 @@
 
 from conftest import DATA_DIR
 
-from sdf_timing.core.model import SDFFile
-from sdf_timing.io import sdfparse
+from sdf_toolkit.core.model import SDFFile
+from sdf_toolkit.io import sdfparse
 
 GOLDEN_DIR = DATA_DIR / "golden"
 

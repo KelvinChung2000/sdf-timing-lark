@@ -1,7 +1,7 @@
 # Validation
 
 ```{eval-rst}
-.. automodule:: sdf_timing.validate
+.. automodule:: sdf_toolkit.validate
    :members:
    :undoc-members:
    :show-inheritance:

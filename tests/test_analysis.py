@@ -1,13 +1,13 @@
 import pytest
 
-from sdf_timing.analysis.pathgraph import (
+from sdf_toolkit.analysis.pathgraph import (
     RankedPath,
     TimingGraph,
     compute_slack,
     critical_path,
     rank_paths,
 )
-from sdf_timing.core.model import DelayPaths, SDFFile, SDFHeader, Values
+from sdf_toolkit.core.model import DelayPaths, SDFFile, SDFHeader, Values
 
 
 class TestGetScalar:

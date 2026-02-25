@@ -3,7 +3,7 @@
 import statistics
 from dataclasses import dataclass
 
-from sdf_timing.core.model import SDFFile
+from sdf_toolkit.core.model import SDFFile
 
 
 @dataclass
@@ -63,8 +63,8 @@ def compute_stats(
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
-    >>> from sdf_timing.analysis.stats import compute_stats
+    >>> from sdf_toolkit.core.builder import SDFBuilder
+    >>> from sdf_toolkit.analysis.stats import compute_stats
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

@@ -4,7 +4,7 @@ from pathlib import Path
 from conftest import DATA_DIR
 from typer.testing import CliRunner
 
-from sdf_timing.cli import app
+from sdf_toolkit.cli import app
 
 runner = CliRunner()
 

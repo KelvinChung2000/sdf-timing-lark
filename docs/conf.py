@@ -1,6 +1,6 @@
-"""Sphinx configuration for sdf-timing documentation."""
+"""Sphinx configuration for sdf-toolkit documentation."""
 
-project = "sdf-timing"
+project = "sdf-toolkit"
 copyright = "2024, F4PGA Authors"
 author = "F4PGA Authors"
 

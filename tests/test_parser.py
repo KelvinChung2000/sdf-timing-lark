@@ -6,7 +6,7 @@ import pytest
 from conftest import DATA_DIR
 from lark import LarkError
 
-from sdf_timing.parser.parser import (
+from sdf_toolkit.parser.parser import (
     SDFLarkParser,
     _local,
     get_parser,

@@ -63,14 +63,14 @@ This is an independent modernized rewrite inspired by the original [f4pga-sdf-ti
 ## Installation
 
 ```bash
-uv pip install sdf_timing
+uv pip install sdf_toolkit
 ```
 
 For development:
 
 ```bash
-git clone https://github.com/chipsalliance/python-sdf-timing.git
-cd python-sdf-timing
+git clone https://github.com/KelvinChung2000/sdf-toolkit.git
+cd sdf-toolkit
 uv pip install -e '.[dev]'
 ```
 
@@ -80,22 +80,22 @@ uv pip install -e '.[dev]'
 
 ```bash
 # Parse and inspect an SDF file
-sdf-timing info design.sdf
+sdf-toolkit info design.sdf
 
 # Find critical path between two pins
-sdf-timing critical-path design.sdf clk_input data_output
+sdf-toolkit critical-path design.sdf clk_input data_output
 
 # Generate timing report
-sdf-timing report design.sdf --period 10.0
+sdf-toolkit report design.sdf --period 10.0
 
 # Query specific entries
-sdf-timing query design.sdf --cell-type BUFX4 --min-delay 1.0
+sdf-toolkit query design.sdf --cell-type BUFX4 --min-delay 1.0
 ```
 
 ### Python API
 
 ```python
-from sdf_timing import parse, TimingGraph
+from sdf_toolkit import parse, TimingGraph
 
 # Parse SDF file
 with open("design.sdf") as f:
@@ -109,7 +109,7 @@ print(f"Path delay: {delays[0].nominal.max}")
 
 ## CLI Reference
 
-The `sdf-timing` command provides 19 subcommands for comprehensive SDF manipulation:
+The `sdf-toolkit` command provides 19 subcommands for comprehensive SDF manipulation:
 
 ### File I/O
 
@@ -161,26 +161,26 @@ The `sdf-timing` command provides 19 subcommands for comprehensive SDF manipulat
 
 ```bash
 # Parse to JSON
-sdf-timing parse design.sdf > design.json
+sdf-toolkit parse design.sdf > design.json
 
 # Parse to normalized SDF with different timescale
-sdf-timing parse design.sdf --format sdf --timescale 1ns > normalized.sdf
+sdf-toolkit parse design.sdf --format sdf --timescale 1ns > normalized.sdf
 
 # Show summary information
-sdf-timing info design.sdf
+sdf-toolkit info design.sdf
 ```
 
 ### Path Composition and Verification
 
 ```bash
 # Find all paths and compose delays
-sdf-timing compose design.sdf P1/z P2/i
+sdf-toolkit compose design.sdf P1/z P2/i
 
 # Show detailed edge-by-edge breakdown
-sdf-timing compose design.sdf P1/z P2/i --verbose
+sdf-toolkit compose design.sdf P1/z P2/i --verbose
 
 # Verify expected delay (returns exit code 0 on match, 1 on mismatch)
-sdf-timing verify design.sdf P1/z P2/i \
+sdf-toolkit verify design.sdf P1/z P2/i \
     --expected '{"slow": {"min": null, "avg": null, "max": 2.5}}' \
     --tolerance 0.01
 ```
@@ -189,59 +189,59 @@ sdf-timing verify design.sdf P1/z P2/i \
 
 ```bash
 # Find critical (slowest) path for setup timing
-sdf-timing critical-path design.sdf clk data_out --field slow --metric max
+sdf-toolkit critical-path design.sdf clk data_out --field slow --metric max
 
 # Compute slack against clock period
-sdf-timing slack design.sdf clk data_out 10.0 --field slow --metric max
+sdf-toolkit slack design.sdf clk data_out 10.0 --field slow --metric max
 
 # Rank all paths from fastest to slowest
-sdf-timing rank-paths design.sdf clk data_out --ascending --limit 10
+sdf-toolkit rank-paths design.sdf clk data_out --ascending --limit 10
 
 # Analyze all endpoint pairs in design
-sdf-timing batch-analysis design.sdf --field slow --metric max --limit 20
+sdf-toolkit batch-analysis design.sdf --field slow --metric max --limit 20
 ```
 
 ### Querying and Filtering
 
 ```bash
 # Query entries by cell type
-sdf-timing query design.sdf --cell-type BUFX4 --cell-type INVX2
+sdf-toolkit query design.sdf --cell-type BUFX4 --cell-type INVX2
 
 # Filter by delay threshold
-sdf-timing query design.sdf --min-delay 1.0 --max-delay 5.0
+sdf-toolkit query design.sdf --min-delay 1.0 --max-delay 5.0
 
 # Match specific pins with regex
-sdf-timing query design.sdf --pin-pattern "clk.*" --entry-type iopath
+sdf-toolkit query design.sdf --pin-pattern "clk.*" --entry-type iopath
 
 # Output filtered SDF
-sdf-timing query design.sdf --cell-type BUFX4 --format sdf > buffers_only.sdf
+sdf-toolkit query design.sdf --cell-type BUFX4 --format sdf > buffers_only.sdf
 ```
 
 ### Validation and Linting
 
 ```bash
 # Validate SDF structure
-sdf-timing lint design.sdf
+sdf-toolkit lint design.sdf
 
 # Show only errors
-sdf-timing lint design.sdf --severity error
+sdf-toolkit lint design.sdf --severity error
 
 # Get statistics
-sdf-timing stats design.sdf --field slow --metric max
+sdf-toolkit stats design.sdf --field slow --metric max
 ```
 
 ### Comparison and Merging
 
 ```bash
 # Compare two SDF files
-sdf-timing diff design_v1.sdf design_v2.sdf --tolerance 0.01
+sdf-toolkit diff design_v1.sdf design_v2.sdf --tolerance 0.01
 
 # Normalize before comparing
-sdf-timing diff design_v1.sdf design_v2.sdf \
+sdf-toolkit diff design_v1.sdf design_v2.sdf \
     --normalize --target-timescale 1ps
 
 # Merge multiple files
-sdf-timing merge file1.sdf file2.sdf file3.sdf \
+sdf-toolkit merge file1.sdf file2.sdf file3.sdf \
     --strategy keep-last \
     --target-timescale 1ps \
     --format sdf > merged.sdf
@@ -251,13 +251,13 @@ sdf-timing merge file1.sdf file2.sdf file3.sdf \
 
 ```bash
 # Normalize to nanoseconds
-sdf-timing normalize design.sdf --target 1ns --format sdf > design_ns.sdf
+sdf-toolkit normalize design.sdf --target 1ns --format sdf > design_ns.sdf
 
 # Annotate Verilog with specify blocks
-sdf-timing annotate design.sdf cells.v -o annotated_cells.v
+sdf-toolkit annotate design.sdf cells.v -o annotated_cells.v
 
 # Decompose unknown delay
-sdf-timing decompose \
+sdf-toolkit decompose \
     --total '{"nominal": {"min": null, "avg": null, "max": 5.0}}' \
     --known '{"nominal": {"min": null, "avg": null, "max": 2.0}}'
 ```
@@ -266,10 +266,10 @@ sdf-timing decompose \
 
 ```bash
 # Export timing graph
-sdf-timing dot design.sdf -o timing.dot
+sdf-toolkit dot design.sdf -o timing.dot
 
 # Export with critical path highlighting
-sdf-timing dot design.sdf -o timing.dot \
+sdf-toolkit dot design.sdf -o timing.dot \
     --highlight-source clk \
     --highlight-sink data_out \
     --field slow --metric max
@@ -282,10 +282,10 @@ dot -Tpng timing.dot -o timing.png
 
 ```bash
 # Comprehensive timing report
-sdf-timing report design.sdf --field slow --metric max
+sdf-toolkit report design.sdf --field slow --metric max
 
 # With slack analysis
-sdf-timing report design.sdf --period 10.0 --top-n 20
+sdf-toolkit report design.sdf --period 10.0 --top-n 20
 ```
 
 ## Python API
@@ -293,7 +293,7 @@ sdf-timing report design.sdf --period 10.0 --top-n 20
 ### Basic Parsing and Emission
 
 ```python
-from sdf_timing import parse, emit
+from sdf_toolkit import parse, emit
 
 # Parse SDF text
 with open("design.sdf") as f:
@@ -321,7 +321,7 @@ sdf_text = emit(sdf, timescale="1ns")
 ### Timing Graph and Path Analysis
 
 ```python
-from sdf_timing.analysis.pathgraph import TimingGraph, critical_path, rank_paths
+from sdf_toolkit.analysis.pathgraph import TimingGraph, critical_path, rank_paths
 
 # Build timing graph
 graph = TimingGraph(sdf)
@@ -358,8 +358,8 @@ for i, rp in enumerate(ranked[:10]):
 ### Path Verification and Decomposition
 
 ```python
-from sdf_timing.analysis.pathgraph import verify_path, decompose_delay, compute_slack
-from sdf_timing.core.model import DelayPaths, Values
+from sdf_toolkit.analysis.pathgraph import verify_path, decompose_delay, compute_slack
+from sdf_toolkit.core.model import DelayPaths, Values
 
 # Verify a path matches expected delay
 expected = DelayPaths(
@@ -392,7 +392,7 @@ if slack is not None:
 ### Delay Arithmetic
 
 ```python
-from sdf_timing.core.model import Values, DelayPaths
+from sdf_toolkit.core.model import Values, DelayPaths
 
 # Create delay values
 a = Values(min=1.0, avg=2.0, max=3.0)
@@ -431,8 +431,8 @@ scaled = partial * 2.0  # Values(min=2.0, avg=None, max=6.0)
 ### Querying and Filtering
 
 ```python
-from sdf_timing.analysis.query import query
-from sdf_timing.core.model import EntryType
+from sdf_toolkit.analysis.query import query
+from sdf_toolkit.core.model import EntryType
 
 # Query specific entries
 filtered = query(
@@ -453,7 +453,7 @@ for cell_type, instances in filtered.cells.items():
 ### Validation
 
 ```python
-from sdf_timing.analysis.validate import validate
+from sdf_toolkit.analysis.validate import validate
 
 # Validate SDF structure
 issues = validate(sdf)
@@ -467,7 +467,7 @@ for issue in issues:
 ### Statistics
 
 ```python
-from sdf_timing.analysis.stats import compute_stats
+from sdf_toolkit.analysis.stats import compute_stats
 
 # Get aggregate statistics
 stats = compute_stats(sdf, field="slow", metric="max")
@@ -485,7 +485,7 @@ for entry_type, count in stats.entry_type_counts.items():
 ### Diffing
 
 ```python
-from sdf_timing.analysis.diff import diff
+from sdf_toolkit.analysis.diff import diff
 
 # Compare two SDF files
 sdf_a = parse(open("design_v1.sdf").read())
@@ -512,7 +512,7 @@ for vd in result.value_diffs:
 ### Merging
 
 ```python
-from sdf_timing.transform.merge import merge, ConflictStrategy
+from sdf_toolkit.transform.merge import merge, ConflictStrategy
 
 # Merge multiple SDF files
 sdf_files = [parse(open(f).read()) for f in ["a.sdf", "b.sdf", "c.sdf"]]
@@ -530,7 +530,7 @@ output = emit(merged, timescale="1ps")
 ### Normalization
 
 ```python
-from sdf_timing.transform.normalize import normalize_delays
+from sdf_toolkit.transform.normalize import normalize_delays
 
 # Normalize all delays to nanoseconds
 normalized = normalize_delays(sdf, target_timescale="1ns")
@@ -542,7 +542,7 @@ output = emit(normalized, timescale="1ns")
 ### DOT Export
 
 ```python
-from sdf_timing.analysis.export import to_dot
+from sdf_toolkit.analysis.export import to_dot
 
 # Export basic timing graph
 dot_text = to_dot(graph)
@@ -563,7 +563,7 @@ dot_text = to_dot(
 ### Batch Analysis
 
 ```python
-from sdf_timing.analysis.pathgraph import batch_endpoint_analysis
+from sdf_toolkit.analysis.pathgraph import batch_endpoint_analysis
 
 # Analyze all startpoint-to-endpoint pairs
 results = batch_endpoint_analysis(graph, field="slow", metric="max")
@@ -579,7 +579,7 @@ for result in results[:10]:
 
 ```
 sdf-toolkit/
-├── src/sdf_timing/
+├── src/sdf_toolkit/
 │   ├── __init__.py           # Main exports (parse, emit, TimingGraph, etc.)
 │   ├── __main__.py           # CLI entry point
 │   ├── cli.py                # Typer CLI commands
@@ -626,8 +626,8 @@ sdf-toolkit/
 ### Setup
 
 ```bash
-git clone https://github.com/chipsalliance/python-sdf-timing.git
-cd python-sdf-timing
+git clone https://github.com/KelvinChung2000/sdf-toolkit.git
+cd sdf-toolkit
 uv pip install -e '.[dev,docs]'
 ```
 
@@ -638,7 +638,7 @@ uv pip install -e '.[dev,docs]'
 uv run pytest
 
 # Run with coverage
-uv run pytest --cov=sdf_timing --cov-report=html
+uv run pytest --cov=sdf_toolkit --cov-report=html
 
 # Run specific test file
 uv run pytest tests/test_parser.py
@@ -710,7 +710,7 @@ SDF is widely used in ASIC and FPGA design flows for:
 
 - [IEEE 1497-2001 Standard](https://standards.ieee.org/standard/1497-2001.html) - Official SDF specification
 - [Standard Delay Format (Wikipedia)](https://en.wikipedia.org/wiki/Standard_Delay_Format)
-- [Project Documentation](https://python-sdf-timing.readthedocs.io/)
+- [Project Documentation](https://sdf-toolkit.readthedocs.io/)
 
 ### Related Tools
 
@@ -721,7 +721,7 @@ SDF is widely used in ASIC and FPGA design flows for:
 
 ### Community
 
-- [GitHub Repository](https://github.com/chipsalliance/python-sdf-timing)
+- [GitHub Repository](https://github.com/KelvinChung2000/sdf-toolkit)
 - [Original F4PGA SDF Timing](https://github.com/chipsalliance/f4pga-sdf-timing) - Original project this was inspired by
 
 ## License

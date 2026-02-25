@@ -1,7 +1,7 @@
 # Report Generation
 
 ```{eval-rst}
-.. automodule:: sdf_timing.report
+.. automodule:: sdf_toolkit.report
    :members:
    :undoc-members:
    :show-inheritance:

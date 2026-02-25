@@ -1,7 +1,7 @@
 """Tests for CellBuilder.add_entry collision handling."""
 
-from sdf_timing.core.builder import CellBuilder, SDFBuilder
-from sdf_timing.core.model import (
+from sdf_toolkit.core.builder import CellBuilder, SDFBuilder
+from sdf_toolkit.core.model import (
     BaseEntry,
     Hold,
     Iopath,

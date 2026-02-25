@@ -3,7 +3,7 @@
 import copy
 import re
 
-from sdf_timing.core.model import BaseEntry, EntryType, SDFFile
+from sdf_toolkit.core.model import BaseEntry, EntryType, SDFFile
 
 
 def query(
@@ -47,8 +47,8 @@ def query(
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
-    >>> from sdf_timing.analysis.query import query
+    >>> from sdf_toolkit.core.builder import SDFBuilder
+    >>> from sdf_toolkit.analysis.query import query
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

@@ -6,8 +6,8 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
-from sdf_timing.cli import app
-from sdf_timing.core.model import (
+from sdf_toolkit.cli import app
+from sdf_toolkit.core.model import (
     BaseEntry,
     DelayPaths,
     EdgeType,
@@ -23,7 +23,7 @@ from sdf_timing.core.model import (
     Values,
     Width,
 )
-from sdf_timing.io.annotate import (
+from sdf_toolkit.io.annotate import (
     SpecifyEntry,
     WireDelay,
     YosysCell,

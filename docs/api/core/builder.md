@@ -1,7 +1,7 @@
 # Builder
 
 ```{eval-rst}
-.. automodule:: sdf_timing.builder
+.. automodule:: sdf_toolkit.builder
    :members:
    :undoc-members:
    :show-inheritance:

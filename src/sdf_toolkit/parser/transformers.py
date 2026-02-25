@@ -4,7 +4,7 @@ from typing import TypeVar
 
 from lark import Token, Transformer, v_args
 
-from sdf_timing.core.model import (
+from sdf_toolkit.core.model import (
     BaseEntry,
     DelayPaths,
     Device,

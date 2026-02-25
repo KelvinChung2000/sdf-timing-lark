@@ -5,14 +5,14 @@ from io import StringIO
 from rich.console import Console
 from rich.table import Table
 
-from sdf_timing.analysis.pathgraph import (
+from sdf_toolkit.analysis.pathgraph import (
     TimingGraph,
     batch_endpoint_analysis,
     compute_slack,
 )
-from sdf_timing.analysis.stats import compute_stats
-from sdf_timing.analysis.validate import validate
-from sdf_timing.core.model import SDFFile
+from sdf_toolkit.analysis.stats import compute_stats
+from sdf_toolkit.analysis.validate import validate
+from sdf_toolkit.core.model import SDFFile
 
 
 def _format_float(value: float | None) -> str:
@@ -62,8 +62,8 @@ def generate_report(
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
-    >>> from sdf_timing.analysis.report import generate_report
+    >>> from sdf_toolkit.core.builder import SDFBuilder
+    >>> from sdf_toolkit.analysis.report import generate_report
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

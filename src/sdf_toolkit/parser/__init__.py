@@ -1,6 +1,6 @@
 """Lark-based SDF file parser with thread-safe caching."""
 
-from sdf_timing.parser.parser import (
+from sdf_toolkit.parser.parser import (
     SDFLarkParser,
     get_parser,
     parse_sdf,

@@ -3,8 +3,8 @@
 import copy
 from enum import StrEnum
 
-from sdf_timing.core.model import BaseEntry, SDFFile
-from sdf_timing.transform.normalize import normalize_delays
+from sdf_toolkit.core.model import BaseEntry, SDFFile
+from sdf_toolkit.transform.normalize import normalize_delays
 
 
 class ConflictStrategy(StrEnum):
@@ -46,8 +46,8 @@ def merge(
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
-    >>> from sdf_timing.transform.merge import merge
+    >>> from sdf_toolkit.core.builder import SDFBuilder
+    >>> from sdf_toolkit.transform.merge import merge
     >>> sdf_a = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

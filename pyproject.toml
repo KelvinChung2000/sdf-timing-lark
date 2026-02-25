@@ -1,5 +1,5 @@
 [project]
-name = "sdf_timing"
+name = "sdf-toolkit"
 dynamic = ["version"]
 description = "Python library for working Standard Delay Format (SDF) Timing Annotation files."
 readme = "README.md"
@@ -16,11 +16,10 @@ requires-python = ">=3.11"
 dependencies = ["lark", "jinja2", "typer>=0.24.1", "rich>=14.3.3", "networkx"]
 
 [project.scripts]
-sdf_timing_parse = "sdf_timing.io.sdfparse:main"
-sdf-timing = "sdf_timing.cli:main"
+sdf-toolkit = "sdf_toolkit.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/chipsalliance/python-sdf-timing"
+Homepage = "https://github.com/KelvinChung2000/sdf-toolkit"
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff", "pre-commit", "pytest-cov", "ty"]
@@ -38,7 +37,7 @@ version_scheme = "post-release"
 local_scheme = "no-local-version"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/sdf_timing"]
+packages = ["src/sdf_toolkit"]
 
 [dependency-groups]
 dev = ["ty>=0.0.18"]
@@ -46,7 +45,7 @@ dev = ["ty>=0.0.18"]
 [tool.pytest.ini_options]
 testpaths = ["tests", "src"]
 python_files = ["test_*.py", "*_test.py"]
-addopts = ["--doctest-modules", "--cov=sdf_timing", "--cov-report=term-missing"]
+addopts = ["--doctest-modules", "--cov=sdf_toolkit", "--cov-report=term-missing"]
 
 [tool.ty.environment]
 python-version = "3.11"

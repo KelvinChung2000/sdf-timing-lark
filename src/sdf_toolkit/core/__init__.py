@@ -1,6 +1,6 @@
 """Core data models and utility functions for SDF timing."""
 
-from sdf_timing.core.builder import (
+from sdf_toolkit.core.builder import (
     CellBuilder,
     SDFBuilder,
     make_device,
@@ -10,7 +10,7 @@ from sdf_timing.core.builder import (
     make_port,
     make_timing_check,
 )
-from sdf_timing.core.model import (
+from sdf_toolkit.core.model import (
     BaseEntry,
     CellsDict,
     DelayPaths,
@@ -35,7 +35,7 @@ from sdf_timing.core.model import (
     Values,
     Width,
 )
-from sdf_timing.core.utils import get_scale_fs, get_scale_seconds
+from sdf_toolkit.core.utils import get_scale_fs, get_scale_seconds
 
 __all__ = [
     # model -- data classes and type aliases

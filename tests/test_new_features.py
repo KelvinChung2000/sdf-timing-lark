@@ -1,17 +1,17 @@
 import pytest
 from conftest import DATA_DIR
 
-from sdf_timing.analysis.diff import diff
-from sdf_timing.analysis.pathgraph import batch_endpoint_analysis
-from sdf_timing.analysis.query import query
-from sdf_timing.analysis.report import generate_report
-from sdf_timing.analysis.stats import compute_stats
-from sdf_timing.analysis.validate import validate
-from sdf_timing.core.builder import SDFBuilder
-from sdf_timing.core.model import BaseEntry, CellsDict, EntryType, SDFFile, SDFHeader
-from sdf_timing.parser.parser import parse_sdf
-from sdf_timing.transform.merge import ConflictStrategy, merge
-from sdf_timing.transform.normalize import normalize_delays
+from sdf_toolkit.analysis.diff import diff
+from sdf_toolkit.analysis.pathgraph import batch_endpoint_analysis
+from sdf_toolkit.analysis.query import query
+from sdf_toolkit.analysis.report import generate_report
+from sdf_toolkit.analysis.stats import compute_stats
+from sdf_toolkit.analysis.validate import validate
+from sdf_toolkit.core.builder import SDFBuilder
+from sdf_toolkit.core.model import BaseEntry, CellsDict, EntryType, SDFFile, SDFHeader
+from sdf_toolkit.parser.parser import parse_sdf
+from sdf_toolkit.transform.merge import ConflictStrategy, merge
+from sdf_toolkit.transform.normalize import normalize_delays
 
 
 def _count_entries(cells: CellsDict) -> int:

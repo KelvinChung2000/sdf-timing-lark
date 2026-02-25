@@ -1,6 +1,6 @@
-"""sdf_timing -- parse and emit Standard Delay Format (SDF) timing files."""
+"""sdf_toolkit -- parse and emit Standard Delay Format (SDF) timing files."""
 
-from sdf_timing.analysis import (
+from sdf_toolkit.analysis import (
     DiffEntry,
     DiffResult,
     EndpointResult,
@@ -23,10 +23,10 @@ from sdf_timing.analysis import (
     validate,
     verify_path,
 )
-from sdf_timing.core import CellBuilder, SDFBuilder, SDFFile, SDFHeader
-from sdf_timing.io import annotate_verilog, emit, emit_sdf, parse
-from sdf_timing.parser import parse_sdf, parse_sdf_file
-from sdf_timing.transform import ConflictStrategy, merge, normalize_delays
+from sdf_toolkit.core import CellBuilder, SDFBuilder, SDFFile, SDFHeader
+from sdf_toolkit.io import annotate_verilog, emit, emit_sdf, parse
+from sdf_toolkit.parser import parse_sdf, parse_sdf_file
+from sdf_toolkit.transform import ConflictStrategy, merge, normalize_delays
 
 __all__ = [
     # core

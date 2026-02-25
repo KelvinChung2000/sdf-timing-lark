@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass, field
 
-from sdf_timing.core.model import DelayPaths, SDFFile, Values
-from sdf_timing.transform.normalize import normalize_delays
+from sdf_toolkit.core.model import DelayPaths, SDFFile, Values
+from sdf_toolkit.transform.normalize import normalize_delays
 
 _HEADER_FIELDS: tuple[str, ...] = (
     "sdfversion",
@@ -255,8 +255,8 @@ def diff(
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
-    >>> from sdf_timing.analysis.diff import diff
+    >>> from sdf_toolkit.core.builder import SDFBuilder
+    >>> from sdf_toolkit.analysis.diff import diff
     >>> a = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

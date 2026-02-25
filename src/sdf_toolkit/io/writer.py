@@ -20,10 +20,10 @@
 
 import jinja2
 
-from sdf_timing.core.model import BaseEntry, SDFFile, SDFHeader
+from sdf_toolkit.core.model import BaseEntry, SDFFile, SDFHeader
 
 env = jinja2.Environment(
-    loader=jinja2.PackageLoader("sdf_timing.io", "templates"),
+    loader=jinja2.PackageLoader("sdf_toolkit.io", "templates"),
     keep_trailing_newline=True,
 )
 

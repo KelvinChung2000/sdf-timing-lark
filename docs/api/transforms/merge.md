@@ -1,7 +1,7 @@
 # Merge
 
 ```{eval-rst}
-.. automodule:: sdf_timing.merge
+.. automodule:: sdf_toolkit.merge
    :members:
    :undoc-members:
    :show-inheritance:

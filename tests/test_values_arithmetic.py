@@ -1,4 +1,4 @@
-from sdf_timing.core.model import DelayPaths, Values
+from sdf_toolkit.core.model import DelayPaths, Values
 
 
 class TestValuesAdd:

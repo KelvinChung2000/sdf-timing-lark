@@ -17,8 +17,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """Legacy public API for parsing and emitting SDF timing files.
 
-Parsing is now implemented in :mod:`sdf_timing.parser`.  The ``parse``
-function here delegates to :func:`sdf_timing.parser.parse_sdf` for
+Parsing is now implemented in :mod:`sdf_toolkit.parser`.  The ``parse``
+function here delegates to :func:`sdf_toolkit.parser.parse_sdf` for
 backward compatibility.
 """
 
@@ -26,9 +26,9 @@ import json
 import sys
 from pathlib import Path
 
-from sdf_timing.core.model import SDFFile
-from sdf_timing.io import writer
-from sdf_timing.parser.parser import parse_sdf
+from sdf_toolkit.core.model import SDFFile
+from sdf_toolkit.io import writer
+from sdf_toolkit.parser.parser import parse_sdf
 
 
 def emit(input: SDFFile, timescale: str = "1ps") -> str:  # noqa: A002
@@ -48,7 +48,7 @@ def emit(input: SDFFile, timescale: str = "1ps") -> str:  # noqa: A002
 
     Examples
     --------
-    >>> from sdf_timing.io.sdfparse import parse, emit
+    >>> from sdf_toolkit.io.sdfparse import parse, emit
     >>> sdf_text = '(DELAYFILE (SDFVERSION "3.0") (TIMESCALE 1ps))'
     >>> sdf = parse(sdf_text)
     >>> output = emit(sdf)
@@ -73,7 +73,7 @@ def parse(input: str) -> SDFFile:  # noqa: A002
 
     Examples
     --------
-    >>> from sdf_timing.io.sdfparse import parse
+    >>> from sdf_toolkit.io.sdfparse import parse
     >>> sdf_text = '(DELAYFILE (SDFVERSION "3.0") (TIMESCALE 1ps))'
     >>> sdf = parse(sdf_text)
     >>> sdf.header.sdfversion
@@ -87,7 +87,7 @@ def parse(input: str) -> SDFFile:  # noqa: A002
 def main() -> None:
     """Run the command line SDF parser."""
     if len(sys.argv) != 2:
-        print("Usage: sdf_timing_parse <sdf_file>")  # noqa: T201
+        print("Usage: sdf_toolkit_parse <sdf_file>")  # noqa: T201
         sys.exit(1)
 
     sdf_file = sys.argv[1]

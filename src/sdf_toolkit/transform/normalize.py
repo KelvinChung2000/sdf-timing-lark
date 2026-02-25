@@ -2,8 +2,8 @@
 
 import copy
 
-from sdf_timing.core.model import DelayPaths, SDFFile, Values
-from sdf_timing.core.utils import get_scale_fs
+from sdf_toolkit.core.model import DelayPaths, SDFFile, Values
+from sdf_toolkit.core.utils import get_scale_fs
 
 
 def normalize_delays(sdf: SDFFile, target_timescale: str) -> SDFFile:
@@ -28,8 +28,8 @@ def normalize_delays(sdf: SDFFile, target_timescale: str) -> SDFFile:
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
-    >>> from sdf_timing.transform.normalize import normalize_delays
+    >>> from sdf_toolkit.core.builder import SDFBuilder
+    >>> from sdf_toolkit.transform.normalize import normalize_delays
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(timescale="1ps")

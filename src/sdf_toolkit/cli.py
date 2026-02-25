@@ -15,8 +15,8 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
-from sdf_timing.analysis.export import to_dot
-from sdf_timing.analysis.pathgraph import (
+from sdf_toolkit.analysis.export import to_dot
+from sdf_toolkit.analysis.pathgraph import (
     TimingGraph,
     batch_endpoint_analysis,
     compute_slack,
@@ -25,7 +25,7 @@ from sdf_timing.analysis.pathgraph import (
     rank_paths,
     verify_path,
 )
-from sdf_timing.core.model import (
+from sdf_toolkit.core.model import (
     BaseEntry,
     DelayPaths,
     EntryType,
@@ -33,8 +33,8 @@ from sdf_timing.core.model import (
     SDFHeader,
     Values,
 )
-from sdf_timing.io.sdfparse import emit as sdf_emit
-from sdf_timing.parser.parser import parse_sdf
+from sdf_toolkit.io.sdfparse import emit as sdf_emit
+from sdf_toolkit.parser.parser import parse_sdf
 
 app = typer.Typer(no_args_is_help=True)
 console = Console()
@@ -553,7 +553,7 @@ def annotate(
     ] = "max",
 ) -> None:
     """Annotate a Verilog cell library with SDF timing specify blocks."""
-    from sdf_timing.io.annotate import annotate_verilog
+    from sdf_toolkit.io.annotate import annotate_verilog
 
     result = annotate_verilog(
         sdf_path=sdf_file,
@@ -585,7 +585,7 @@ def normalize(
     ] = OutputFormat.json,
 ) -> None:
     """Normalize all delays in an SDF file to a target timescale."""
-    from sdf_timing.transform.normalize import normalize_delays
+    from sdf_toolkit.transform.normalize import normalize_delays
 
     sdf = _load_sdf(sdf_file)
     result = normalize_delays(sdf, target)
@@ -608,7 +608,7 @@ def lint(
     ] = "all",
 ) -> None:
     """Validate an SDF file and report structural/semantic issues."""
-    from sdf_timing.analysis.validate import validate
+    from sdf_toolkit.analysis.validate import validate
 
     sdf = _load_sdf(sdf_file)
     issues = validate(sdf)
@@ -655,7 +655,7 @@ def stats(
     ] = "max",
 ) -> None:
     """Compute aggregate statistics over delay values."""
-    from sdf_timing.analysis.stats import compute_stats
+    from sdf_toolkit.analysis.stats import compute_stats
 
     sdf = _load_sdf(sdf_file)
     result = compute_stats(sdf, field, metric)
@@ -727,7 +727,7 @@ def query_cmd(
     ] = OutputFormat.json,
 ) -> None:
     """Filter and query SDF file entries."""
-    from sdf_timing.analysis.query import query
+    from sdf_toolkit.analysis.query import query
 
     sdf = _load_sdf(sdf_file)
 
@@ -777,7 +777,7 @@ def diff_cmd(
     ] = "1ps",
 ) -> None:
     """Compare two SDF files and report differences."""
-    from sdf_timing.analysis.diff import diff
+    from sdf_toolkit.analysis.diff import diff
 
     sdf_a = _load_sdf(file_a)
     sdf_b = _load_sdf(file_b)
@@ -861,7 +861,7 @@ def merge_cmd(
     ] = OutputFormat.json,
 ) -> None:
     """Merge two or more SDF files into one."""
-    from sdf_timing.transform.merge import ConflictStrategy, merge
+    from sdf_toolkit.transform.merge import ConflictStrategy, merge
 
     sdf_files = [_load_sdf(f) for f in files]
     result = merge(
@@ -949,7 +949,7 @@ def report(
     ] = None,
 ) -> None:
     """Generate a comprehensive timing report."""
-    from sdf_timing.analysis.report import generate_report
+    from sdf_toolkit.analysis.report import generate_report
 
     sdf = _load_sdf(sdf_file)
     text = generate_report(

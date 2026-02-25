@@ -2,8 +2,8 @@
 
 from conftest import DATA_DIR
 
-from sdf_timing.core.model import EntryType
-from sdf_timing.parser.parser import parse_sdf
+from sdf_toolkit.core.model import EntryType
+from sdf_toolkit.parser.parser import parse_sdf
 
 
 class TestIncrementDelays:

@@ -1,7 +1,7 @@
 # Diff
 
 ```{eval-rst}
-.. automodule:: sdf_timing.diff
+.. automodule:: sdf_toolkit.diff
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,7 +1,7 @@
 # Data Model
 
 ```{eval-rst}
-.. automodule:: sdf_timing.model
+.. automodule:: sdf_toolkit.model
    :members:
    :undoc-members:
    :show-inheritance:

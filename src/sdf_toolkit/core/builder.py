@@ -2,7 +2,7 @@
 
 from typing import TypeVar
 
-from sdf_timing.core.model import (
+from sdf_toolkit.core.model import (
     BaseEntry,
     CellsDict,
     DelayPaths,
@@ -186,7 +186,7 @@ class SDFBuilder:
 
     Examples
     --------
-    >>> from sdf_timing.core.builder import SDFBuilder
+    >>> from sdf_toolkit.core.builder import SDFBuilder
     >>> sdf = (
     ...     SDFBuilder()
     ...     .set_header(sdfversion="3.0", design="top")
@@ -351,7 +351,7 @@ class CellBuilder:
 
         Examples
         --------
-        >>> from sdf_timing.core.builder import SDFBuilder
+        >>> from sdf_toolkit.core.builder import SDFBuilder
         >>> sdf = (
         ...     SDFBuilder()
         ...     .add_cell("INV", "i0")
