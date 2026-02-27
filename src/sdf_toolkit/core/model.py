@@ -330,10 +330,12 @@ class DelayPaths:
         ValueError
             If *field* or *metric* is not a valid name.
         """
-        if field not in DelayField:
+        # Check if field is valid (Python 3.11 compatible)
+        if field not in DelayField.__members__.values():
             msg = f"Invalid field {field!r}, expected one of {tuple(DelayField)}"
             raise ValueError(msg)
-        if metric not in DelayMetric:
+        # Check if metric is valid (Python 3.11 compatible)
+        if metric not in DelayMetric.__members__.values():
             msg = f"Invalid metric {metric!r}, expected one of {tuple(DelayMetric)}"
             raise ValueError(msg)
         values: Values | None = getattr(self, field)
