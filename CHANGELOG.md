@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/FPGA-Research/SDF-toolkit/compare/v0.1.1...v0.1.2) (2026-04-08)
+
+
+### Bug Fixes
+
+* correct path computation bugs in pathgraph ([d082545](https://github.com/FPGA-Research/SDF-toolkit/commit/d0825454a16dca1e50b14f94f76afef33bbda0a9))
+
 ## [0.1.1](https://github.com/KelvinChung2000/SDF-toolkit/compare/v0.1.0...v0.1.1) (2026-02-27)
 
 
