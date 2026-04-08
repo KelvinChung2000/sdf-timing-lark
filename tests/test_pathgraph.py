@@ -213,3 +213,238 @@ class TestEmptyGraph:
         graph = TimingGraph(sdf)
         assert graph.nodes() == set()
         assert graph.edges() == []
+
+
+class TestParallelEdges:
+    """Bug #1: find_paths overcounts when parallel edges exist."""
+
+    @pytest.fixture()
+    def parallel_graph(self) -> TimingGraph:
+        """Graph with two parallel IOPATH edges from A to Y in one cell."""
+        sdf = (
+            SDFBuilder()
+            .set_header(timescale="1ps")
+            .add_cell("BUF", "b0")
+            .add_iopath(
+                "A",
+                "Y",
+                {"slow": {"min": 1.0, "avg": 2.0, "max": 3.0}},
+            )
+            .add_iopath(
+                "A",
+                "Y",
+                {"slow": {"min": 4.0, "avg": 5.0, "max": 6.0}},
+            )
+            .build()
+        )
+        return TimingGraph(sdf)
+
+    def test_find_paths_count_with_parallel_edges(
+        self, parallel_graph: TimingGraph
+    ) -> None:
+        """Two parallel edges s->t should give exactly 2 paths, not 4."""
+        paths = parallel_graph.find_paths("b0/A", "b0/Y")
+        assert len(paths) == 2
+
+    def test_find_paths_no_duplicate_delays(
+        self, parallel_graph: TimingGraph
+    ) -> None:
+        """Each parallel edge path should have a distinct delay."""
+        paths = parallel_graph.find_paths("b0/A", "b0/Y")
+        delays = [parallel_graph.compose_delay(p) for p in paths]
+        scalars = sorted(
+            d.get_scalar("slow", "max") for d in delays  # type: ignore[type-var]
+        )
+        assert scalars == [3.0, 6.0]
+
+    def test_rank_paths_count_with_parallel_edges(
+        self, parallel_graph: TimingGraph
+    ) -> None:
+        ranked = rank_paths(parallel_graph, "b0/A", "b0/Y", "slow", "max")
+        assert len(ranked) == 2
+
+    def test_critical_path_with_parallel_edges(
+        self, parallel_graph: TimingGraph
+    ) -> None:
+        from sdf_toolkit.core.pathgraph import critical_path
+
+        cp = critical_path(parallel_graph, "b0/A", "b0/Y", "slow", "max")
+        assert cp is not None
+        assert cp.scalar == 6.0
+
+    def test_batch_endpoint_path_count_with_parallel_edges(
+        self, parallel_graph: TimingGraph
+    ) -> None:
+        from sdf_toolkit.core.pathgraph import batch_endpoint_analysis
+
+        results = batch_endpoint_analysis(parallel_graph, "slow", "max")
+        assert len(results) == 1
+        assert results[0].path_count == 2
+
+
+class TestParallelEdgesMultiHop:
+    """Parallel edges on multi-hop paths."""
+
+    @pytest.fixture()
+    def multi_hop_parallel_graph(self) -> TimingGraph:
+        """a/Y --(2 edges)--> b/A -> b/Y with 1 edge."""
+        sdf = (
+            SDFBuilder()
+            .set_header(timescale="1ps")
+            .add_cell("BUF", "b")
+            .add_iopath("A", "Y", {"slow": {"min": 1.0, "avg": 1.0, "max": 1.0}})
+            .add_interconnect(
+                "a/Y", "b/A", {"slow": {"min": 2.0, "avg": 2.0, "max": 2.0}}
+            )
+            .add_interconnect(
+                "a/Y", "b/A", {"slow": {"min": 3.0, "avg": 3.0, "max": 3.0}}
+            )
+            .build()
+        )
+        return TimingGraph(sdf)
+
+    def test_multi_hop_parallel_count(
+        self, multi_hop_parallel_graph: TimingGraph
+    ) -> None:
+        """2 parallel edges on first hop * 1 edge on second = 2 paths."""
+        paths = multi_hop_parallel_graph.find_paths("a/Y", "b/Y")
+        assert len(paths) == 2
+
+
+class TestNoneScalarSorting:
+    """Bug #3: None scalars should sort last in rank_paths, not first."""
+
+    @pytest.fixture()
+    def mixed_field_graph(self) -> TimingGraph:
+        """Graph where one path yields a scalar and another yields None."""
+        sdf = (
+            SDFBuilder()
+            .set_header(timescale="1ps")
+            .add_cell("BUF", "b1")
+            .add_iopath("A", "Y", {"slow": {"min": 1.0, "avg": 2.0, "max": 3.0}})
+            .add_cell("BUF", "b2")
+            .add_iopath("A", "Y", {"fast": {"min": 10.0, "avg": 20.0, "max": 30.0}})
+            .add_interconnect(
+                "src/Y", "b1/A", {"slow": {"min": 0.5, "avg": 0.5, "max": 0.5}}
+            )
+            .add_interconnect(
+                "src/Y", "b2/A", {"fast": {"min": 0.5, "avg": 0.5, "max": 0.5}}
+            )
+            .add_interconnect(
+                "b1/Y", "sink/A", {"slow": {"min": 0.5, "avg": 0.5, "max": 0.5}}
+            )
+            .add_interconnect(
+                "b2/Y", "sink/A", {"fast": {"min": 0.5, "avg": 0.5, "max": 0.5}}
+            )
+            .build()
+        )
+        return TimingGraph(sdf)
+
+    def test_none_scalars_sort_last_descending(
+        self, mixed_field_graph: TimingGraph
+    ) -> None:
+        """When ranking by 'slow'/'max', paths with None scalar go last."""
+        ranked = rank_paths(
+            mixed_field_graph, "src/Y", "sink/A", "slow", "max", descending=True
+        )
+        assert len(ranked) == 2
+        # First path should have a real scalar, second should be None
+        assert ranked[0].scalar is not None
+        assert ranked[1].scalar is None
+
+    def test_none_scalars_sort_last_ascending(
+        self, mixed_field_graph: TimingGraph
+    ) -> None:
+        """When ascending, None scalars still go last."""
+        ranked = rank_paths(
+            mixed_field_graph, "src/Y", "sink/A", "slow", "max", descending=False
+        )
+        assert len(ranked) == 2
+        assert ranked[-1].scalar is None
+
+    def test_critical_path_skips_none_scalar(
+        self, mixed_field_graph: TimingGraph
+    ) -> None:
+        """critical_path should return a path with a real scalar, not None."""
+        from sdf_toolkit.core.pathgraph import critical_path
+
+        cp = critical_path(mixed_field_graph, "src/Y", "sink/A", "slow", "max")
+        assert cp is not None
+        assert cp.scalar is not None
+        assert cp.scalar == pytest.approx(4.0, abs=1e-6)
+
+
+class TestMixedFieldComposition:
+    """DelayPaths intersection semantics: composition of mixed fields yields None."""
+
+    def test_compose_mixed_fields_yields_none(self) -> None:
+        """Adding DelayPaths with disjoint fields gives empty result."""
+        a = DelayPaths(slow=Values(min=1.0, avg=2.0, max=3.0))
+        b = DelayPaths(nominal=Values(min=1.0, avg=2.0, max=3.0))
+        result = a + b
+        # Intersection-based: neither field is in both, so both are None
+        assert result.slow is None
+        assert result.nominal is None
+
+    def test_compose_overlapping_fields_keeps_overlap(self) -> None:
+        """Adding DelayPaths with overlapping fields keeps the overlap."""
+        a = DelayPaths(
+            slow=Values(min=1.0, avg=2.0, max=3.0),
+            fast=Values(min=0.5, avg=1.0, max=1.5),
+        )
+        b = DelayPaths(
+            slow=Values(min=2.0, avg=3.0, max=4.0),
+            nominal=Values(min=1.0, avg=1.0, max=1.0),
+        )
+        result = a + b
+        # slow is in both, so it's kept
+        assert result.slow is not None
+        assert result.slow.max == 7.0
+        # fast and nominal are not in both
+        assert result.fast is None
+        assert result.nominal is None
+
+    def test_compose_path_with_mixed_fields_scalar_is_none(self) -> None:
+        """A path mixing slow-only and nominal-only edges yields None scalar."""
+        sdf = (
+            SDFBuilder()
+            .set_header(timescale="1ps")
+            .add_cell("BUF", "b1")
+            .add_iopath("A", "Y", {"slow": {"min": 1.0, "avg": 2.0, "max": 3.0}})
+            .add_cell("BUF", "b2")
+            .add_iopath("A", "Y", {"nominal": {"min": 1.0, "avg": 2.0, "max": 3.0}})
+            .add_interconnect(
+                "b1/Y", "b2/A", {"slow": {"min": 0.5, "avg": 0.5, "max": 0.5}}
+            )
+            .build()
+        )
+        g = TimingGraph(sdf)
+        paths = g.find_paths("b1/A", "b2/Y")
+        assert len(paths) == 1
+        delay = g.compose_delay(paths[0])
+        # b2's IOPATH has nominal only, so slow disappears in composition
+        assert delay.get_scalar("slow", "max") is None
+
+
+class TestSourceEqualsSink:
+    """Bug #4: source == sink should return empty paths, not crash."""
+
+    def test_find_paths_source_equals_sink(self, spec1_graph: TimingGraph) -> None:
+        """find_paths with source == sink should return empty list."""
+        paths = spec1_graph.find_paths("P1/z", "P1/z")
+        assert paths == []
+
+    def test_missing_source_node(self, spec1_graph: TimingGraph) -> None:
+        """find_paths with a nonexistent source should raise NodeNotFound."""
+        with pytest.raises(nx.NodeNotFound):
+            spec1_graph.find_paths("NONEXISTENT", "P2/i")
+
+    def test_missing_sink_node(self, spec1_graph: TimingGraph) -> None:
+        """find_paths with a nonexistent sink should raise NodeNotFound."""
+        with pytest.raises(nx.NodeNotFound):
+            spec1_graph.find_paths("P1/z", "NONEXISTENT")
+
+    def test_source_equals_sink_nonexistent(self, spec1_graph: TimingGraph) -> None:
+        """find_paths with source==sink on nonexistent node should raise."""
+        with pytest.raises(nx.NodeNotFound):
+            spec1_graph.find_paths("NONEXISTENT", "NONEXISTENT")

@@ -318,11 +318,27 @@ class TimingGraph:
         list[list[TimingEdge]]
             All simple paths as lists of TimingEdge objects.
         """
+        if source not in self._graph:
+            raise nx.NodeNotFound(f"Source node {source!r} not in graph")
+        if sink not in self._graph:
+            raise nx.NodeNotFound(f"Sink node {sink!r} not in graph")
+        if source == sink:
+            return []
+
         edge_paths: list[list[TimingEdge]] = []
 
+        # nx.all_simple_paths on MultiDiGraph may yield duplicate node
+        # sequences (one per parallel-edge combination).  Deduplicate
+        # so the product expansion below counts each edge combo once.
+        seen_node_paths: set[tuple[str, ...]] = set()
         for node_path in nx.all_simple_paths(
             self._graph, source, sink, cutoff=max_depth
         ):
+            key = tuple(node_path)
+            if key in seen_node_paths:
+                continue
+            seen_node_paths.add(key)
+
             hop_options: list[list[TimingEdge]] = []
             for u, v in itertools.pairwise(node_path):
                 edge_dict = self._graph[u][v]
@@ -456,10 +472,13 @@ def rank_paths(
 
     def _sort_key(rp: RankedPath) -> tuple[int, float]:
         if rp.scalar is None:
+            # Always sort None last: use (1, ...) so it comes after (0, ...)
+            # regardless of reverse flag.
             return (1, 0.0)
-        return (0, rp.scalar)
+        sign = -1.0 if descending else 1.0
+        return (0, sign * rp.scalar)
 
-    ranked.sort(key=_sort_key, reverse=descending)
+    ranked.sort(key=_sort_key)
     return ranked
 
 
